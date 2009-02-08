@@ -1,0 +1,19 @@
+= WiiPresent
+
+== Ideas
+
+- Rumble when battery low
+- Rumble-pulse after 15min, 30min, 45min, then rumble every min
+- Use leds to indicate time
+- Make sound when presentation is over
+- Option to select keymap for OpenOffice, evince, xpdf, acrobat reader, ...
+- Record timings and print timestamp + keypress
+- Follow keypresses so we know on what slide we are too
+
+== OpenOffice keymap
+ - A: next slide
+ - B: previous slide
+ - left/right: change workspace
+ - up/down: fullscreen/minimize
+ - -/+: mouse buttons
+ - home: exit WiiPresent
