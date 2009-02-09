@@ -1,6 +1,8 @@
 * Mon Feb 09 2009 Dag Wieers <dag@wieers.com>
 - Use tilt information to move mouse pointer.
 - Show battery information.
+- Implemented left and right mouse buttons.
+- Simple battery level check.
 
 * Sat Feb 07 2009 Dag Wieers <dag@wieers.com>
 - Ignore repeating keys.

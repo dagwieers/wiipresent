@@ -60,7 +60,11 @@ void MovePointer(Display *display, int xpos, int ypos, int relative) {
         XTestFakeRelativeMotionEvent(display, xpos, ypos, 0);
     else
         XTestFakeMotionEvent(display, -1, xpos, ypos, 0);
-    return;
+}
+
+void ClickMouse(Display *display, int button, int release) {
+    XTestFakeButtonEvent(display, button, release, 0);
+    XSync(display, False);
 }
 
 void exit_clean(int sig) {
@@ -79,7 +83,7 @@ void rumble(wiimote_t *wmote, int msecs) {
 
 int main() {
     int debug = False;
-    int length = 1 * 60;
+    int length = 50 * 60;
     char btaddress[] = "00:1B:7A:F9:D5:70";
     wmote = (wiimote_t) WIIMOTE_INIT;
     wiimote_report_t report = WIIMOTE_REPORT_INIT;
@@ -113,8 +117,6 @@ int main() {
     int revert;
 
     rumble(&wmote, 200);
-
-    printf("Battery status: %d\n", wmote.battery);
 
     time_t start = 0, now = 0, duration = 0;
     int phase = 0, oldphase = 0;
@@ -159,77 +161,96 @@ int main() {
             oldphase = phase;
         }
 
-        if (wmote.keys.two) {
-            report.channel = WIIMOTE_RID_STATUS;
-            if (wiimote_report(&wmote, &report, sizeof (report.status)) < 0) {
-                wiimote_perror("unable to get status report");
-            }
+        // Check battery
+        if (wmote.battery < 5) {
+            printf("Bettery low (%d%%), please replace batteries !\n", wmote.battery);
         }
 
 //        printf("%f - %f - %f - %ld - %ld - %ld - %d\n", ((float) duration * 5.0 / (float) length), (float) duration, (float) length, start, now, duration, phase);
 
-        // Filter out recurring key-events for the same key-press
-        if (keys == wmote.keys.bits && !wmote.keys.a) {
-            continue;
+        // Inside the mouse functionality
+        if (wmote.keys.a) {
+            wmote.mode.acc = 1;
+
+            // Block repeating keys
+            if (keys == wmote.keys.bits) {
+                continue;
+            }
+
+            // Left mouse button events
+            if (wmote.keys.minus) {
+                ClickMouse(display, 1, 1);
+            } else if (keys & WIIMOTE_KEY_MINUS) {
+                ClickMouse(display, 1, 0);
+            }
+
+            // Right mouse button events
+            if (wmote.keys.plus) {
+                ClickMouse(display, 3, 1);
+            } else if (keys & WIIMOTE_KEY_PLUS) {
+                ClickMouse(display, 3, 0);
+            }
+
         } else {
+            wmote.mode.acc = 0;
+
+            // Block repeating keys
+            if (keys == wmote.keys.bits) {
+                continue;
+            }
+
+            // Disconnect the device
+            if (wmote.keys.home) {
+                printf("Exit on user request.\n");
+                wiimote_disconnect(&wmote);
+            }
+
+            if (wmote.keys.b) {
+                if (debug) printf("[B] ");
+            }
+
+            // Blank screen
+            if (wmote.keys.one) {
+                XActivateScreenSaver(display);
+            }
+
+            if (wmote.keys.two) {
+                if (debug) printf("[2] ");
+            }
+
+            // Goto to previous workspace
+            if (wmote.keys.plus) {
+                FakeKeycode(XK_Right, ControlMask | Mod1Mask);
+            }
+
+            // Goto to next workspace
+            if (wmote.keys.minus) {
+                FakeKeycode(XK_Left, ControlMask | Mod1Mask);
+            }
+
+            // Fullscreen
+            if (wmote.keys.up) {
+                FakeKeycode(XK_F9, 0);
+            }
+
+            if (wmote.keys.down) {
+                FakeKeycode(XK_Escape, 0);
+            }
+
+            // Next slide
+            if (wmote.keys.left) {
+                FakeKeycode(XK_Page_Up, 0);
+            }
+
+            // Previous slide
+            if (wmote.keys.right) {
+                FakeKeycode(XK_Page_Down, 0);
+            }
+
+            // Save the keys state for next run
             keys = wmote.keys.bits;
         }
 
-        if (wmote.keys.home) {
-            printf("Exit on user request.\n");
-            wiimote_disconnect(&wmote);
-        }
-
-        if (wmote.keys.a) {
-            if (debug) printf("[A] ");
-            wmote.mode.acc = 1;
-            MovePointer(display, wmote.tilt.x/8, wmote.tilt.y/8, 1);
-        } else {
-            wmote.mode.acc = 0;
-        }
-
-        if (wmote.keys.b) {
-            if (debug) printf("[B] ");
-        }
-
-        if (wmote.keys.one) {
-            if (debug) printf("[1] ");
-            XActivateScreenSaver(display);
-        }
-
-        if (wmote.keys.two) {
-            if (debug) printf("[2] ");
-        }
-
-        if (wmote.keys.plus) {
-            if (debug) printf("[+] ");
-            FakeKeycode(XK_Right, ControlMask | Mod1Mask);
-        }
-
-        if (wmote.keys.minus) {
-            if (debug) printf("[-] ");
-            FakeKeycode(XK_Left, ControlMask | Mod1Mask);
-        }
-
-        if (wmote.keys.up) {
-            if (debug) printf("[up] ");
-            FakeKeycode(XK_F9, 0);
-        }
-
-        if (wmote.keys.down) {
-            if (debug) printf("[down] ");
-            FakeKeycode(XK_Escape, 0);
-        }
-
-        if (wmote.keys.left) {
-            if (debug) printf("[left] ");
-            FakeKeycode(XK_Page_Up, 0);
-        }
-
-        if (wmote.keys.right) {
-            if (debug) printf("[right] ");
-            FakeKeycode(XK_Page_Down, 0);
-        }
     }
     XCloseDisplay(display);
 
