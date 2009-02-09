@@ -1,5 +1,4 @@
 = WiiPresent - Presentations using the WiiMote
-Dag Wieers <dag@wieers.com>
 
 WiiPresent is a small program that enables you to use a Nintendo WiiMote
 for giving presentations.
@@ -14,4 +13,3 @@ You need the following libraries in order to build and use WiiPresent:
  - bluez libraries and headers
  - libcwiimote libraries and headers (build with -D_NO_BLOCKING_UPDATE)
 
-// vim: set syntax=asciidoc:

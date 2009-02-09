@@ -55,17 +55,25 @@ static void FakeKeycode(int keycode, int modifiers){
 
 }
 
+void MovePointer(Display *display, int xpos, int ypos, int relative) {
+    if (relative)
+        XTestFakeRelativeMotionEvent(display, xpos, ypos, 0);
+    else
+        XTestFakeMotionEvent(display, -1, xpos, ypos, 0);
+    return;
+}
+
 void exit_clean(int sig) {
     wiimote_disconnect(&wmote);
     printf("Exiting on signal %d.\n", sig);
     exit(0);
 }
 
-void rumble(wiimote_t *wmote, int secs) {
+void rumble(wiimote_t *wmote, int msecs) {
     wiimote_update(wmote);
     wmote->rumble = 1;
     wiimote_update(wmote);
-    usleep(secs * 1000);
+    usleep(msecs * 1000);
     wmote->rumble = 0;
 }
 
@@ -74,7 +82,9 @@ int main() {
     int length = 1 * 60;
     char btaddress[] = "00:1B:7A:F9:D5:70";
     wmote = (wiimote_t) WIIMOTE_INIT;
+    wiimote_report_t report = WIIMOTE_REPORT_INIT;
 
+    // Make stdout unbuffered
     setvbuf(stdout, NULL, _IONBF, 0);
 
     // Wait for 1+2
@@ -103,6 +113,8 @@ int main() {
     int revert;
 
     rumble(&wmote, 200);
+
+    printf("Battery status: %d\n", wmote.battery);
 
     time_t start = 0, now = 0, duration = 0;
     int phase = 0, oldphase = 0;
@@ -138,7 +150,7 @@ int main() {
 
             switch (phase)  {
                 case 0:
-                    printf("Sorry, times is up !\n");
+                    printf("Sorry, time is up !\n");
                     break;
                 case 4:
                     printf("Hurry up ! Maybe questions ?\n");
@@ -147,10 +159,17 @@ int main() {
             oldphase = phase;
         }
 
+        if (wmote.keys.two) {
+            report.channel = WIIMOTE_RID_STATUS;
+            if (wiimote_report(&wmote, &report, sizeof (report.status)) < 0) {
+                wiimote_perror("unable to get status report");
+            }
+        }
+
 //        printf("%f - %f - %f - %ld - %ld - %ld - %d\n", ((float) duration * 5.0 / (float) length), (float) duration, (float) length, start, now, duration, phase);
 
         // Filter out recurring key-events for the same key-press
-        if (keys == wmote.keys.bits) {
+        if (keys == wmote.keys.bits && !wmote.keys.a) {
             continue;
         } else {
             keys = wmote.keys.bits;
@@ -159,34 +178,55 @@ int main() {
         if (wmote.keys.home) {
             printf("Exit on user request.\n");
             wiimote_disconnect(&wmote);
-        } else if (wmote.keys.a) {
+        }
+
+        if (wmote.keys.a) {
             if (debug) printf("[A] ");
-        } else if (wmote.keys.b) {
+            wmote.mode.acc = 1;
+            MovePointer(display, wmote.tilt.x/8, wmote.tilt.y/8, 1);
+        } else {
+            wmote.mode.acc = 0;
+        }
+
+        if (wmote.keys.b) {
             if (debug) printf("[B] ");
-        } else if (wmote.keys.one) {
+        }
+
+        if (wmote.keys.one) {
             if (debug) printf("[1] ");
-//          wmote.rumble = 1;
-//            FakeKeycode(XF86XK_ScreenSaver, 0);
-              XActivateScreenSaver(display);
-        } else if (wmote.keys.two) {
+            XActivateScreenSaver(display);
+        }
+
+        if (wmote.keys.two) {
             if (debug) printf("[2] ");
-//          wmote.rumble = 0;
-        } else if (wmote.keys.plus) {
+        }
+
+        if (wmote.keys.plus) {
             if (debug) printf("[+] ");
             FakeKeycode(XK_Right, ControlMask | Mod1Mask);
-        } else if (wmote.keys.minus) {
+        }
+
+        if (wmote.keys.minus) {
             if (debug) printf("[-] ");
             FakeKeycode(XK_Left, ControlMask | Mod1Mask);
-        } else if (wmote.keys.up) {
+        }
+
+        if (wmote.keys.up) {
             if (debug) printf("[up] ");
             FakeKeycode(XK_F9, 0);
-        } else if (wmote.keys.down) {
+        }
+
+        if (wmote.keys.down) {
             if (debug) printf("[down] ");
             FakeKeycode(XK_Escape, 0);
-        } else if (wmote.keys.left) {
+        }
+
+        if (wmote.keys.left) {
             if (debug) printf("[left] ");
             FakeKeycode(XK_Page_Up, 0);
-        } else if (wmote.keys.right) {
+        }
+
+        if (wmote.keys.right) {
             if (debug) printf("[right] ");
             FakeKeycode(XK_Page_Down, 0);
         }

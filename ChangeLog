@@ -1,0 +1,14 @@
+* Mon Feb 09 2009 Dag Wieers <dag@wieers.com>
+- Use tilt information to move mouse pointer.
+- Show battery information.
+
+* Sat Feb 07 2009 Dag Wieers <dag@wieers.com>
+- Ignore repeating keys.
+- Rumble wiimote when associated.
+- Divide presentation time into 5 phases.
+- Change the leds to indicate when changing phase.
+- Rumble the wiimote when chaning phase.
+- Increase rumble time exponentially based on phase.
+
+* Fri Feb 06 2009 Dag Wieers <dag@wieers.com>
+- Initial test program using libwiimote.
