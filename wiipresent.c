@@ -16,6 +16,7 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 
 // $Id$
 
+#include <getopt.h>
 #include <math.h>
 #include <signal.h>
 #include <stdio.h>
@@ -28,6 +29,9 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #include <X11/keysym.h>
 
 #include "wiimote_api.h"
+
+static char NAME[] = "wiipresent";
+static char VERSION[] = "0.5";
 
 static char *displayname = NULL;
 static Display *display = NULL;
@@ -81,35 +85,105 @@ void rumble(wiimote_t *wmote, int msecs) {
     wmote->rumble = 0;
 }
 
-int main() {
+int main(int argc, char **argv) {
     int debug = False;
     int length = 50 * 60;
-    char btaddress[] = "00:1B:7A:F9:D5:70";
+    char *btaddress = NULL;
     wmote = (wiimote_t) WIIMOTE_INIT;
-    wiimote_report_t report = WIIMOTE_REPORT_INIT;
+
+    int c;
 
     // Make stdout unbuffered
     setvbuf(stdout, NULL, _IONBF, 0);
 
+    while (1) {
+        int option_index = 0;
+        static struct option long_options[] = {
+            {"bluetooth", 1, 0, 'b'},
+            {"display", 1, 0, 'd'},
+            {"help", 0, 0, 'h'},
+            {"length", 1, 0, 'l'},
+            {"version", 0, 0, 'v'},
+            {0, 0, 0, 0}
+        };
+
+        c = getopt_long (argc, argv, "b:hl:v", long_options, &option_index);
+        if (c == -1)
+            break;
+
+        switch (c) {
+            case 'b':
+                btaddress = optarg;
+                continue;
+            case 'd':
+                displayname = optarg;
+                continue;
+            case 'h':
+                printf("Nintendo Wiimote presentation controller\n\
+\n\
+%s options:\n\
+  -b, --bluetooth=btaddress      Wiimote bluetooth address (use hcitool scan)\n\
+  -d, --display=name             X display to use\n\
+  -l, --length=minutes           presentation length in minutes\n\
+\n\
+  -h, --help                     display this help and exit\n\
+  -v, --version                  output version information and exit\n\
+\n\
+Report bugs to <dag@wieers.com>.\n", NAME);
+                exit(0);
+            case 'l':
+                length = atoi(optarg) * 60;
+                continue;
+            case 'v':
+                printf("%s %s\n\
+Copyright (C) 2009 Dag Wieërs\n\
+This is open source software.  You may redistribute copies of it under the terms of\n\
+the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\n\
+There is NO WARRANTY, to the extent permitted by law.\n\
+\n\
+Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
+                exit(0);
+            default:
+                printf ("?? getopt returned character code 0%o ??\n", c);
+        }
+
+        if (optind < argc) {
+            printf ("non-option ARGV-elements: ");
+            while (optind < argc)
+                printf ("%s ", argv[optind++]);
+            printf ("\n");
+        }
+    }
+
     // Wait for 1+2
-    printf("Please press 1+2 on the wiimote with address %s...", btaddress);
-    wiimote_connect(&wmote, btaddress);
-    printf("\nIt's alive, Jim!\n");
+    if (btaddress == NULL) {
+//        printf("Please press 1+2 on a wiimote in the viscinity...");
+//        wiimote_connect(&wmote, btaddress);
+        printf("Sorry, you need to provide a bluetooth address using -b/--bluetooth.\n");
+        exit(1);
+    } else {
+        printf("Please press 1+2 on the wiimote with address %s...", btaddress);
+        wiimote_connect(&wmote, btaddress);
+    }
 
     signal(SIGINT, exit_clean);
     signal(SIGHUP, exit_clean);
     signal(SIGQUIT, exit_clean);
 
+    printf("\nIt's alive, Jim!\n");
+
+    printf("Presentation length is %dmin divided in 5 slots of %dmin.\n", length/60, length/60/5);
+
     // Obtain the X11 display.
-//    if (displayname == NULL)
-//        displayname = getenv("DISPLAY");
+    if (displayname == NULL)
+        displayname = getenv("DISPLAY");
 
-//    if (displayname == NULL)
-//        displayname = ":0.0";
+    if (displayname == NULL)
+        displayname = ":0.0";
 
-    display = XOpenDisplay(0);
+    display = XOpenDisplay(displayname);
     if (display == NULL) {
-        fprintf(stderr, "wiipresent: can't open display `%s'.\n", displayname);
+        fprintf(stderr, "%s: can't open display `%s'.\n", NAME, displayname);
         return -1;
     }
 
@@ -171,6 +245,9 @@ int main() {
         // Inside the mouse functionality
         if (wmote.keys.a) {
             wmote.mode.acc = 1;
+
+            // Tilt method
+            MovePointer(display, wmote.tilt.x / 4, wmote.tilt.y / 4, 1);
 
             // Block repeating keys
             if (keys == wmote.keys.bits) {
