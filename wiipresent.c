@@ -195,6 +195,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     time_t start = 0, now = 0, duration = 0;
     int phase = 0, oldphase = 0;
     uint16_t keys = 0;
+//    int x = 0, y = 0;
+//    int prevx = 0, prevy = 0;
+//    int dots = 0;
 
     start = time(NULL);
 
@@ -244,10 +247,35 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
         // Inside the mouse functionality
         if (wmote.keys.a) {
+            wmote.mode.ir = 1;
             wmote.mode.acc = 1;
 
             // Tilt method
             MovePointer(display, wmote.tilt.x / 4, wmote.tilt.y / 4, 1);
+
+/*            // Infrared method
+            dots = (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? 1 : 0) +
+                   (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? 1 : 0) +
+                   (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? 1 : 0) +
+                   (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? 1 : 0);
+            if (dots > 0) {
+                x = ( (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? wmote.ir1.x : 0) +
+                      (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.x : 0) +
+                      (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.x : 0) +
+                      (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.x : 0) ) / dots;
+                y = ( (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? wmote.ir1.y : 0) +
+                      (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.y : 0) +
+                      (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.y : 0) +
+                      (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.y : 0) ) / dots;
+/                MovePointer(display, 1280 * (1791 - x) / 1791, 800 * y / 1791, 0);
+                prevx = x;
+                prevy = y;
+            } else {
+                x = 0;
+                y = 0;
+            }
+            fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
+*/
 
             // Block repeating keys
             if (keys == wmote.keys.bits) {
@@ -269,6 +297,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             }
 
         } else {
+            wmote.mode.ir = 0;
             wmote.mode.acc = 0;
 
             // Block repeating keys
