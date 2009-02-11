@@ -7,7 +7,7 @@
 - Record timings and print timestamp + keypress
 - Follow keypresses so we know on what slide we are too
 - Make the mouse pointer move based on IR data
-- Implement the power button (to disconnect the device)
+- Implement the power button (to disconnect the device cleanly)
 
 == OpenOffice keymaps
  - A: move mouse pointer
