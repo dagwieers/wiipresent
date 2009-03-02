@@ -184,7 +184,6 @@ wiimote_ir_t *search_newpoint(wiimote_t *wmote, wiimote_ir_t *other) {
 }
 
 int main(int argc, char **argv) {
-    int debug = False;
     int length = 0;
     char *btaddress = NULL;
     wmote = (wiimote_t) WIIMOTE_INIT;
@@ -380,7 +379,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 //        printf("%f - %f - %f - %ld - %ld - %ld - %d\n", ((float) duration * 5.0 / (float) length), (float) duration, (float) length, start, now, duration, phase);
 
         // Inside the mouse functionality
-        if (wmote.keys.a) {
+        if (wmote.keys.b) {
             wmote.mode.ir = 1;
             wmote.mode.acc = 1;
 
@@ -439,7 +438,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 y = 0;
             }
 */
-            fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
+            if (verbose) fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
 
             // Block repeating keys
             if (keys == wmote.keys.bits) {
@@ -476,8 +475,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 exit_clean(0);
             }
 
-            if (wmote.keys.b) {
-                if (debug) printf("[B] ");
+            if (wmote.keys.a) {
+                if (verbose) fprintf(stderr, "[A] ");
             }
 
             // Goto to previous workspace
