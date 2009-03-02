@@ -29,12 +29,13 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XTest.h>
+#include <X11/XF86keysym.h>
 #include <X11/keysym.h>
 
 #include "wiimote_api.h"
 
 static char NAME[] = "wiipresent";
-static char VERSION[] = "0.5";
+static char VERSION[] = "0.6";
 
 static char *displayname = NULL;
 static Display *display = NULL;
@@ -56,6 +57,9 @@ static void XFakeKeycode(int keycode, int modifiers){
     if ( modifiers & Mod1Mask )
         XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Alt_L), True, 0);
 
+    if ( modifiers & Mod2Mask )
+        XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Alt_R), True, 0);
+
     if ( modifiers & ShiftMask )
         XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Shift_L), True, 0);
 
@@ -68,12 +72,14 @@ static void XFakeKeycode(int keycode, int modifiers){
     if ( modifiers & ShiftMask )
         XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Shift_L), False, 0);
 
-    if ( modifiers & ControlMask )
-        XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Control_L), False, 0);
+    if ( modifiers & Mod2Mask )
+        XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Alt_R), False, 0);
 
     if ( modifiers & Mod1Mask )
         XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Alt_L), False, 0);
 
+    if ( modifiers & ControlMask )
+        XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Control_L), False, 0);
 }
 
 void XMovePointer(Display *display, int xpos, int ypos, int relative) {
@@ -122,19 +128,30 @@ Status XQueryCommand(Display *display, Window window, char **name) {
     Window *children_window;
     unsigned int nchildrens;
 
+    // Prevent BadWindow
+    if (window == 1) return 0;
+
+    if (verbose >= 2) printf("Trying XA_WM_COMMAND for window id: %ld\n", window);
     // Try getting the command
     if (XFetchProperty(display, window, XA_WM_COMMAND, name) == 0) {
         // Try XClassHint next
         XClassHint xclasshint;
+        if (verbose >= 2) printf("Trying XClassHints for window id: %ld\n", window);
         if (XGetClassHint(display, window, &xclasshint) != 0) {
             *name = xclasshint.res_class;
             XFree(xclasshint.res_name);
         // Try parent window
         } else if (XQueryTree(display, window, &root_window, &parent_window, &children_window, &nchildrens) != 0) {
-            if (XQueryCommand(display, parent_window, name) == 0)
+            if (parent_window) {
+                if (verbose >= 2) printf("parent found with window id: %ld\n", parent_window);
+                if (XQueryCommand(display, parent_window, name) == 0)
+                    return 0;
+            } else if (XFetchProperty(display, window, XA_WM_NAME, name) == 0) {
                 return 0;
-        } else
+            }
+        } else {
             return 0;
+        }
     }
     lowercase(*name);
     return 1;
@@ -143,9 +160,14 @@ Status XQueryCommand(Display *display, Window window, char **name) {
 void exit_clean(int sig) {
     wiimote_disconnect(&wmote);
     XSetScreenSaver(display, timeout_return, interval_return, prefer_blanking_return, allow_exposures_return);
-    if (sig != 0)
-        printf("Exiting on signal %d.\n", sig);
-    exit(0);
+    switch(sig) {
+        case(0):
+        case(2):
+            exit(0);
+        default:
+            printf("Exiting on signal %d.\n", sig);
+            exit(sig);
+    }
 }
 
 void rumble(wiimote_t *wmote, int msecs) {
@@ -273,8 +295,6 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     signal(SIGHUP, exit_clean);
     signal(SIGQUIT, exit_clean);
 
-    if (verbose) fprintf(stderr, "It's alive, Jim!\n");
-
     if (length) fprintf(stderr, "Presentation length is %dmin divided in 5 slots of %dmin.\n", length/60, length/60/5);
 
     // Obtain the X11 display.
@@ -307,6 +327,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     wiimote_ir_t *point1 = &wmote.ir1, *point2 = &wmote.ir2;
     int oldbattery = 0;
     Window oldwindow = window;
+    int fullscreentoggle = False;
+    int screensavertoggle = False;
 
     char *name;
     XGetInputFocus(display, &window, &revert);
@@ -326,9 +348,10 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         if (window != oldwindow) {
             if (name) XFree(name);
             if (XQueryCommand(display, window, &name) != 0) {
-                if (verbose) fprintf(stderr, "Loading keymaps for %s (%ld)\n", name, window);
+                if (verbose >= 2) fprintf(stderr, "Loading keymaps for %s (%ld)\n", name, window);
             } else {
-                fprintf(stderr, "ERROR: Unknown %s (%ld)\n", name, window);
+                name = strdup("(unknown)");
+                fprintf(stderr, "ERROR: Unable to find application name for window 0x%x.\n", (unsigned int) window);
             }
             oldwindow = window;
         }
@@ -389,13 +412,13 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             if (!valid_point(point1) || (point1 == point2)) {
                 point1 = search_newpoint(&wmote, point2);
             } else {
-                printf("Point 1 is valid %4d %4d %2d\n", point1->x, point1->y, point1->size);
+                fprintf(stderr, "Point 1 is valid %4d %4d %2d\n", point1->x, point1->y, point1->size);
             }
 
             if (!valid_point(point2) || (point1 == point2)) {
                 point2 = search_newpoint(&wmote, point1);
             } else {
-                printf("Point 2 is valid %4d %4d %2d\n", point2->x, point2->y, point2->size);
+                fprintf(stderr, "Point 2 is valid %4d %4d %2d\n", point2->x, point2->y, point2->size);
             }
 
 //            if (valid_point(point1) && ! valid_point(point2))
@@ -438,7 +461,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 y = 0;
             }
 */
-            if (verbose) fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
+            if (verbose >= 2) fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
 
             // Block repeating keys
             if (keys == wmote.keys.bits) {
@@ -476,7 +499,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             }
 
             if (wmote.keys.a) {
-                if (verbose) fprintf(stderr, "[A] ");
+                if (verbose)
+                    fprintf(stderr, "No A-key support for application %s.\n", name);
             }
 
             // Goto to previous workspace
@@ -489,16 +513,22 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 XFakeKeycode(XK_Left, ControlMask | Mod1Mask);
             }
 
+            if (name == NULL) continue;
+
             if (wmote.keys.one) {
                 if (strstr(name, "firefox") == name)
                     XFakeKeycode(XK_F11, 0);                    // Fullscreen
                 else if (strstr(name, "opera") == name)
                     XFakeKeycode(XK_F11, 0);
-                // TODO: Implement fullscreen toggle for openoffice (send Escape)
                 else if (strstr(name, "openoffice") == name)
-                    XFakeKeycode(XK_F9, 0);
+                    if (fullscreentoggle) 
+                        XFakeKeycode(XK_F9, 0);
+                    else
+                        XFakeKeycode(XK_Escape, 0);
                 else if (strstr(name, "evince") == name)
                     XFakeKeycode(XK_F5, 0);
+                else if (strstr(name, "gqview") == name)
+                    XFakeKeycode(XK_F, 0);
                 else if (strstr(name, "xpdf") == name)
                     XFakeKeycode(XK_F, Mod1Mask);
                 else if (strstr(name, "acroread") == name)
@@ -507,14 +537,36 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_F11, 0);
                 else if (strstr(name, "tvtime") == name)
                     XFakeKeycode(XK_f, 0);
+                else if (strstr(name, "mplayer") == name)
+                    XFakeKeycode(XK_f, 0);
+                else if (strstr(name, "xine") == name)
+                    XFakeKeycode(XK_f, 0);
                 else if (verbose)
-                    fprintf(stderr, "No support for down key in application %s.\n", name);
+                    fprintf(stderr, "No one-key support for application %s.\n", name);
+                fullscreentoggle = ! fullscreentoggle;
             }
 
-            // TODO: Implement screensaver toggle
-            // TODO: Also mute sound
             if (wmote.keys.two) {
-                XActivateScreenSaver(display);                  // Blank screen
+
+                // Mute audio
+                if (strstr(name, "mplayer") == name)
+                    XFakeKeycode(XK_m, 0);
+                if (strstr(name, "xine") == name)
+                    XFakeKeycode(XK_m, ControlMask);
+                else if (verbose) {
+                    XFakeKeycode(XF86XK_AudioMute, 0);
+//                    fprintf(stderr, "No two-key support for application %s.\n", name);
+                }
+
+                // Blank screen
+                if (screensavertoggle) {
+                    XSetScreenSaver(display, 0, 0, 0, 0);
+                    XForceScreenSaver(display, ScreenSaverReset);
+                } else {
+                    XSetScreenSaver(display, 1, 1, 1, 1);
+                    XActivateScreenSaver(display);
+                }
+                screensavertoggle = ! screensavertoggle;
             }
 
             if (wmote.keys.up) {
@@ -528,8 +580,19 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Up, ControlMask);           // Volume Up
                 else if (strstr(name, "tvtime") == name)
                     XFakeKeycode(XK_Up, 0);
-                else if (verbose)
-                    fprintf(stderr, "No support for down key in application %s.\n", name);
+                else if (strstr(name, "vlc") == name)
+                    XFakeKeycode(XK_Up, ControlMask);
+                else if (strstr(name, "xine") == name)
+                    XFakeKeycode(XK_V, ShiftMask);
+                else if (strstr(name, "mplayer") == name)
+                    XFakeKeycode(XK_0, ShiftMask);
+                // FIXME: This does not work
+                else if (strstr(name, "gqview") == name)        // Rotate Clockwise
+                    XFakeKeycode(XK_bracketright, 0);
+                else if (verbose) {
+                    XFakeKeycode(XF86XK_AudioRaiseVolume, 0);
+                    fprintf(stderr, "No up-key for application %s.\n", name);
+                }
             }
 
             if (wmote.keys.down) {
@@ -543,8 +606,19 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Down, ControlMask);
                 else if (strstr(name, "tvtime") == name)
                     XFakeKeycode(XK_Down, 0);
-                else if (verbose)
-                    fprintf(stderr, "No support for down key in application %s.\n", name);
+                else if (strstr(name, "vlc") == name)
+                    XFakeKeycode(XK_Down, ControlMask);
+                else if (strstr(name, "xine") == name)
+                    XFakeKeycode(XK_v, 0);
+                else if (strstr(name, "mplayer") == name)
+                    XFakeKeycode(XK_9, ShiftMask);
+                // FIXME: This does not work
+                else if (strstr(name, "gqview") == name)        // Rotate Counter Clockwise
+                    XFakeKeycode(XK_bracketleft, 0);
+                else if (verbose) {
+                    XFakeKeycode(XF86XK_AudioLowerVolume, 0);
+                    fprintf(stderr, "No down-key support for application %s.\n", name);
+                }
             }
 
             if (wmote.keys.right) {
@@ -558,6 +632,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Page_Down, 0);              // Next Slide
                 else if (strstr(name, "evince") == name)
                     XFakeKeycode(XK_Page_Down, 0);
+                else if (strstr(name, "gqview") == name)
+                    XFakeKeycode(XK_Page_Down, 0);
                 else if (strstr(name, "xpdf") == name)
                     XFakeKeycode(XK_n, 0);
                 else if (strstr(name, "acroread") == name)
@@ -566,8 +642,16 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Right, Mod1Mask);
                 else if (strstr(name, "tvtime") == name)         // Next Channel
                     XFakeKeycode(XK_Up, 0);
-                else if (verbose)
-                    fprintf(stderr, "No support for right key in application %s.\n", name);
+                else if (strstr(name, "vlc") == name)            // Skip Forward
+                    XFakeKeycode(XK_Right, Mod1Mask);
+                else if (strstr(name, "mplayer") == name)
+                    XFakeKeycode(XK_Right, 0);
+                else if (strstr(name, "xine") == name)            // Skip Forward
+                    XFakeKeycode(XK_Right, ControlMask);
+                else if (verbose) {
+                    XFakeKeycode(XF86XK_AudioNext, 0);
+                    fprintf(stderr, "No right-key support for application %s.\n", name);
+                }
             }
 
             if (wmote.keys.left) {
@@ -581,6 +665,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Page_Up, 0);                // Previous Slide
                 else if (strstr(name, "evince") == name)
                     XFakeKeycode(XK_Page_Up, 0);
+                else if (strstr(name, "gqview") == name)
+                    XFakeKeycode(XK_Page_Up, 0);
                 else if (strstr(name, "xpdf") == name)
                     XFakeKeycode(XK_p, 0);
                 else if (strstr(name, "acroread") == name)
@@ -589,8 +675,16 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Left, Mod1Mask);
                 else if (strstr(name, "tvtime") == name)         // Previous Channel
                     XFakeKeycode(XK_Down, 0);
-                else if (verbose)
-                    fprintf(stderr, "No support for left key in application %s.\n", name);
+                else if (strstr(name, "vlc") == name)            // Skip Backward
+                    XFakeKeycode(XK_Left, Mod1Mask);
+                else if (strstr(name, "mplayer") == name)
+                    XFakeKeycode(XK_Left, 0);
+                else if (strstr(name, "xine") == name)
+                    XFakeKeycode(XK_Left, ControlMask);
+                else if (verbose) {
+                    XFakeKeycode(XF86XK_AudioPrev, 0);
+                    fprintf(stderr, "No left-key support for application %s.\n", name);
+                }
             }
 
             // Save the keys state for next run

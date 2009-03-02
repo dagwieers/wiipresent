@@ -6,6 +6,7 @@
 - Record timings and print timestamp + keypress
 - Follow keypresses so we know on what slide we are too
 - Make the mouse pointer move based on IR data
+- Make the mouse buttons do the right thing
 - Implement the power button to disconnect the device cleanly
   (this is a bug in libwiimote)
 
@@ -14,7 +15,7 @@
  - up/down: change volume
  - -/+: change workspace
  - 1: fullscreen
- - 2: blank screen
+ - 2: blank screen/mute audio
  - B: enable mouse pointer
  - home: exit
  - exit/A: unused
