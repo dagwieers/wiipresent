@@ -9,6 +9,7 @@
 - Make the mouse buttons do the right thing
 - Implement the power button to disconnect the device cleanly
   (this is a bug in libwiimote)
+- Use playertoggle to switch between skip forward and next playback
 
 == OpenOffice keymaps
  - left/right: change slide/channel/tab
@@ -16,6 +17,7 @@
  - -/+: change workspace
  - 1: fullscreen
  - 2: blank screen/mute audio
+ - A: Play/Pause
  - B: enable mouse pointer
  - home: exit
- - exit/A: unused
+ - exit: unavailable

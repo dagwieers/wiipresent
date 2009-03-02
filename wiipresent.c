@@ -312,7 +312,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
     // Disable screensaver
     XGetScreenSaver(display, &timeout_return, &interval_return, &prefer_blanking_return, &allow_exposures_return);
-    XSetScreenSaver(display, 0, 0, 0, 0);
+    XSetScreenSaver(display, 0, 0, 1, 0);
 
     // Get the root window for the current display.
     int revert;
@@ -327,6 +327,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     wiimote_ir_t *point1 = &wmote.ir1, *point2 = &wmote.ir2;
     int oldbattery = 0;
     Window oldwindow = window;
+    int playertoggle = False;
     int fullscreentoggle = False;
     int screensavertoggle = False;
 
@@ -498,11 +499,6 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 exit_clean(0);
             }
 
-            if (wmote.keys.a) {
-                if (verbose)
-                    fprintf(stderr, "No A-key support for application %s.\n", name);
-            }
-
             // Goto to previous workspace
             if (wmote.keys.plus) {
                 XFakeKeycode(XK_Right, ControlMask | Mod1Mask);
@@ -513,7 +509,20 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 XFakeKeycode(XK_Left, ControlMask | Mod1Mask);
             }
 
-            if (name == NULL) continue;
+            if (wmote.keys.a) {
+                if (strstr(name, "rhythmbox") == name)
+                    XFakeKeycode(XK_space, ControlMask);
+                else if (strstr(name, "mplayer") == name)
+                    XFakeKeycode(XK_p, 0);
+                else if (strstr(name, "xine") == name)
+                    XFakeKeycode(XK_space, 0);
+                else {
+                    XFakeKeycode(XF86XK_AudioPlay, 0);
+                    if (verbose)
+                        fprintf(stderr, "No A-key support for application %s. (Sending play/mute to X)\n", name);
+                }
+                playertoggle = ! playertoggle;
+            }
 
             if (wmote.keys.one) {
                 if (strstr(name, "firefox") == name)
@@ -553,19 +562,15 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_m, 0);
                 if (strstr(name, "xine") == name)
                     XFakeKeycode(XK_m, ControlMask);
-                else if (verbose) {
+                else
                     XFakeKeycode(XF86XK_AudioMute, 0);
-//                    fprintf(stderr, "No two-key support for application %s.\n", name);
-                }
 
                 // Blank screen
-                if (screensavertoggle) {
-                    XSetScreenSaver(display, 0, 0, 0, 0);
+                if (screensavertoggle)
                     XForceScreenSaver(display, ScreenSaverReset);
-                } else {
-                    XSetScreenSaver(display, 1, 1, 1, 1);
+                else
                     XActivateScreenSaver(display);
-                }
+
                 screensavertoggle = ! screensavertoggle;
             }
 
@@ -577,7 +582,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 else if (strstr(name, "pidgin") == name)
                     XFakeKeycode(XK_Page_Up, 0);
                 else if (strstr(name, "rhythmbox") == name)
-                    XFakeKeycode(XK_Up, ControlMask);           // Volume Up
+                    XFakeKeycode(XF86XK_AudioRaiseVolume, 0);   // Volume Up
+//                    XFakeKeycode(XK_Up, ControlMask);
                 else if (strstr(name, "tvtime") == name)
                     XFakeKeycode(XK_Up, 0);
                 else if (strstr(name, "vlc") == name)
@@ -589,9 +595,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 // FIXME: This does not work
                 else if (strstr(name, "gqview") == name)        // Rotate Clockwise
                     XFakeKeycode(XK_bracketright, 0);
-                else if (verbose) {
+                else {
                     XFakeKeycode(XF86XK_AudioRaiseVolume, 0);
-                    fprintf(stderr, "No up-key for application %s.\n", name);
+                    if (verbose) fprintf(stderr, "No up-key for application %s. (Sending volume up to X)\n", name);
                 }
             }
 
@@ -602,8 +608,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Down, 0);
                 else if (strstr(name, "pidgin") == name)
                     XFakeKeycode(XK_Page_Down, 0);
-                else if (strstr(name, "rhythmbox") == name)     // Volume Down
-                    XFakeKeycode(XK_Down, ControlMask);
+                else if (strstr(name, "rhythmbox") == name)
+                    XFakeKeycode(XF86XK_AudioLowerVolume, 0);   // Volume Down
+//                    XFakeKeycode(XK_Down, ControlMask);
                 else if (strstr(name, "tvtime") == name)
                     XFakeKeycode(XK_Down, 0);
                 else if (strstr(name, "vlc") == name)
@@ -615,9 +622,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 // FIXME: This does not work
                 else if (strstr(name, "gqview") == name)        // Rotate Counter Clockwise
                     XFakeKeycode(XK_bracketleft, 0);
-                else if (verbose) {
+                else {
                     XFakeKeycode(XF86XK_AudioLowerVolume, 0);
-                    fprintf(stderr, "No down-key support for application %s.\n", name);
+                    if (verbose) fprintf(stderr, "No down-key support for application %s. (Sending volume down to X)\n", name);
                 }
             }
 
@@ -648,9 +655,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Right, 0);
                 else if (strstr(name, "xine") == name)            // Skip Forward
                     XFakeKeycode(XK_Right, ControlMask);
-                else if (verbose) {
+                else {
                     XFakeKeycode(XF86XK_AudioNext, 0);
-                    fprintf(stderr, "No right-key support for application %s.\n", name);
+                    if (verbose) fprintf(stderr, "No right-key support for application %s. (Sending play next to X)\n", name);
                 }
             }
 
@@ -681,9 +688,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Left, 0);
                 else if (strstr(name, "xine") == name)
                     XFakeKeycode(XK_Left, ControlMask);
-                else if (verbose) {
+                else {
                     XFakeKeycode(XF86XK_AudioPrev, 0);
-                    fprintf(stderr, "No left-key support for application %s.\n", name);
+                    if (verbose) fprintf(stderr, "No left-key support for application %s. (Sending play previous to X)\n", name);
                 }
             }
 
