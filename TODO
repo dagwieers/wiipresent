@@ -3,17 +3,18 @@
 == Ideas
 - Rumble/flash lights when battery low
 - Make sound when presentation is over
-- Option to select keymap for OpenOffice, evince, xpdf, acrobat reader, ...
 - Record timings and print timestamp + keypress
 - Follow keypresses so we know on what slide we are too
 - Make the mouse pointer move based on IR data
-- Implement the power button (to disconnect the device cleanly)
+- Implement the power button to disconnect the device cleanly
+  (this is a bug in libwiimote)
 
 == OpenOffice keymaps
  - A: move mouse pointer
- - left/right: change slide
- - up/down: fullscreen/minimize
+ - left/right: change slide/channel/tab
+ - up/down: change volume
  - -/+: change workspace
- - 1: blank screen
+ - 1: fullscreen
+ - 2: blank screen
  - power: exit
- - home/2/A/B: unused
+ - home/B: unused

@@ -1,3 +1,11 @@
+* Mon Mar 02 2009 Dag Wieers <dag@wieers.com>
+- Detect application focus and adapt key-combinations
+- Added support for openoffice, xpdf, evince
+- Added support for firefox, opera, pidgin
+- Added support for rhythmbox, tvtime
+- Disable screensaver during WiiPresent run
+- Added ShiftMask in XFakeKeycode
+
 * Tue Feb 10 2009 Dag Wieers <dag@wieers.com>
 - Added -b/--bluetooth option to specify bluetooth address
 - Added -d/--display option to specify the X display to use

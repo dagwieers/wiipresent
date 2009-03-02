@@ -21,10 +21,13 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 
+#include <X11/Xatom.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <X11/extensions/XTest.h>
 #include <X11/keysym.h>
 
@@ -38,18 +41,32 @@ static Display *display = NULL;
 static Window window = 0;
 wiimote_t wmote;
 
-static void FakeKeycode(int keycode, int modifiers){
+int verbose = 0;
+
+// Screensaver variables
+int timeout_return = 0;
+int interval_return = 0;
+int prefer_blanking_return = 0;
+int allow_exposures_return = 0;
+
+static void XFakeKeycode(int keycode, int modifiers){
     if ( modifiers & ControlMask )
         XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Control_L), True, 0);
 
     if ( modifiers & Mod1Mask )
         XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Alt_L), True, 0);
 
+    if ( modifiers & ShiftMask )
+        XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Shift_L), True, 0);
+
     XTestFakeKeyEvent(display, XKeysymToKeycode(display, keycode), True, 0);
 
     XSync(display, False);
 
     XTestFakeKeyEvent(display, XKeysymToKeycode(display, keycode), False, 0);
+
+    if ( modifiers & ShiftMask )
+        XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Shift_L), False, 0);
 
     if ( modifiers & ControlMask )
         XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Control_L), False, 0);
@@ -59,21 +76,75 @@ static void FakeKeycode(int keycode, int modifiers){
 
 }
 
-void MovePointer(Display *display, int xpos, int ypos, int relative) {
+void XMovePointer(Display *display, int xpos, int ypos, int relative) {
     if (relative)
         XTestFakeRelativeMotionEvent(display, xpos, ypos, 0);
     else
         XTestFakeMotionEvent(display, -1, xpos, ypos, 0);
 }
 
-void ClickMouse(Display *display, int button, int release) {
+void XClickMouse(Display *display, int button, int release) {
     XTestFakeButtonEvent(display, button, release, 0);
     XSync(display, False);
 }
 
+Status XFetchProperty (register Display *display, Window window, int property, char **name) {
+    Atom actual_type;
+    int actual_format;
+    unsigned long nitems;
+    unsigned long leftover;
+    unsigned char *data = NULL;
+    if (XGetWindowProperty(display, window, property, 0L, (long) BUFSIZ,
+            False, XA_STRING, &actual_type, &actual_format,
+            &nitems, &leftover, &data) != Success) {
+        *name = NULL;
+        return 0;
+    }
+    if ( (actual_type == XA_STRING) && (actual_format == 8) ) {
+        *name = (char *) data;
+        return 1;
+    }
+    if (data) XFree((char *)data);
+    *name = NULL;
+    return 0;
+}
+
+void lowercase(char *string) {
+    int i;
+    for(i=0; string[i] != '\0'; i++)
+        if (isupper(string[i]))
+            string[i] = tolower(string[i]);
+}
+
+Status XQueryCommand(Display *display, Window window, char **name) {
+    Window root_window;
+    Window parent_window;
+    Window *children_window;
+    unsigned int nchildrens;
+
+    // Try getting the command
+    if (XFetchProperty(display, window, XA_WM_COMMAND, name) == 0) {
+        // Try XClassHint next
+        XClassHint xclasshint;
+        if (XGetClassHint(display, window, &xclasshint) != 0) {
+            *name = xclasshint.res_class;
+            XFree(xclasshint.res_name);
+        // Try parent window
+        } else if (XQueryTree(display, window, &root_window, &parent_window, &children_window, &nchildrens) != 0) {
+            if (XQueryCommand(display, parent_window, name) == 0)
+                return 0;
+        } else
+            return 0;
+    }
+    lowercase(*name);
+    return 1;
+}
+
 void exit_clean(int sig) {
     wiimote_disconnect(&wmote);
-    printf("Exiting on signal %d.\n", sig);
+    XSetScreenSaver(display, timeout_return, interval_return, prefer_blanking_return, allow_exposures_return);
+    if (sig != 0)
+        printf("Exiting on signal %d.\n", sig);
     exit(0);
 }
 
@@ -85,9 +156,36 @@ void rumble(wiimote_t *wmote, int msecs) {
     wmote->rumble = 0;
 }
 
+// Is this a valid point ?
+int valid_point(wiimote_ir_t *point) {
+    if (point == NULL)
+        return 0;
+    if (point->size == 0 || point->size == 15 || point->x == 0 || point->x == 1791 || point->y == 0 || point->y == 1791)
+        return 0;
+    return 1;
+}
+
+// This function returns the largest point not already discovered
+wiimote_ir_t *search_newpoint(wiimote_t *wmote, wiimote_ir_t *other) {
+    wiimote_ir_t *new = &wmote->ir1;
+    wiimote_ir_t *maybe = &wmote->ir2;
+    if (valid_point(maybe) && maybe != other && maybe->size < new->size) {
+        new = maybe;
+    }
+    maybe = &wmote->ir3;
+    if (valid_point(maybe) && maybe != other && maybe->size < new->size) {
+        new = maybe;
+    }
+    maybe = &wmote->ir4;
+    if (valid_point(maybe) && maybe != other && maybe->size < new->size) {
+        new = maybe;
+    }
+    return new;
+}
+
 int main(int argc, char **argv) {
     int debug = False;
-    int length = 50 * 60;
+    int length = 0;
     char *btaddress = NULL;
     wmote = (wiimote_t) WIIMOTE_INIT;
 
@@ -103,7 +201,8 @@ int main(int argc, char **argv) {
             {"display", 1, 0, 'd'},
             {"help", 0, 0, 'h'},
             {"length", 1, 0, 'l'},
-            {"version", 0, 0, 'v'},
+            {"verbose", 0, 0, 'v'},
+            {"version", 0, 0, 'V'},
             {0, 0, 0, 0}
         };
 
@@ -127,7 +226,8 @@ int main(int argc, char **argv) {
   -l, --length=minutes           presentation length in minutes\n\
 \n\
   -h, --help                     display this help and exit\n\
-  -v, --version                  output version information and exit\n\
+  -v, --verbose                  increase verbosity\n\
+      --version                  output version information and exit\n\
 \n\
 Report bugs to <dag@wieers.com>.\n", NAME);
                 exit(0);
@@ -135,6 +235,9 @@ Report bugs to <dag@wieers.com>.\n", NAME);
                 length = atoi(optarg) * 60;
                 continue;
             case 'v':
+                verbose += 1;
+                continue;
+            case 'V':
                 printf("%s %s\n\
 Copyright (C) 2009 Dag Wieërs\n\
 This is open source software.  You may redistribute copies of it under the terms of\n\
@@ -164,15 +267,16 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     } else {
         printf("Please press 1+2 on the wiimote with address %s...", btaddress);
         wiimote_connect(&wmote, btaddress);
+        printf("\n");
     }
 
     signal(SIGINT, exit_clean);
     signal(SIGHUP, exit_clean);
     signal(SIGQUIT, exit_clean);
 
-    printf("\nIt's alive, Jim!\n");
+    if (verbose) fprintf(stderr, "It's alive, Jim!\n");
 
-    printf("Presentation length is %dmin divided in 5 slots of %dmin.\n", length/60, length/60/5);
+    if (length) fprintf(stderr, "Presentation length is %dmin divided in 5 slots of %dmin.\n", length/60, length/60/5);
 
     // Obtain the X11 display.
     if (displayname == NULL)
@@ -187,23 +291,48 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         return -1;
     }
 
+    // Disable screensaver
+    XGetScreenSaver(display, &timeout_return, &interval_return, &prefer_blanking_return, &allow_exposures_return);
+    XSetScreenSaver(display, 0, 0, 0, 0);
+
     // Get the root window for the current display.
     int revert;
-
-    rumble(&wmote, 200);
 
     time_t start = 0, now = 0, duration = 0;
     int phase = 0, oldphase = 0;
     uint16_t keys = 0;
-//    int x = 0, y = 0;
-//    int prevx = 0, prevy = 0;
-//    int dots = 0;
+    int x = 0, y = 0;
+    int prev1x = 0, prev1y = 0;
+    int prev2x = 0, prev2y = 0;
+    int dots = 0;
+    wiimote_ir_t *point1 = &wmote.ir1, *point2 = &wmote.ir2;
+    int oldbattery = 0;
+    Window oldwindow = window;
+
+    char *name;
+    XGetInputFocus(display, &window, &revert);
+    XQueryCommand(display, window, &name);
+    oldwindow = window;
+
+    rumble(&wmote, 200);
 
     start = time(NULL);
 
     while (wiimote_is_open(&wmote)) {
+
         // Find the window which has the current keyboard focus.
         XGetInputFocus(display, &window, &revert);
+
+        // Handle focus changes
+        if (window != oldwindow) {
+            if (name) XFree(name);
+            if (XQueryCommand(display, window, &name) != 0) {
+                if (verbose) fprintf(stderr, "Loading keymaps for %s (%ld)\n", name, window);
+            } else {
+                fprintf(stderr, "ERROR: Unknown %s (%ld)\n", name, window);
+            }
+            oldwindow = window;
+        }
 
         if (wiimote_pending(&wmote) == 0) {
             usleep(10000);
@@ -211,36 +340,41 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
         if (wiimote_update(&wmote) < 0) {
             printf("Lost connection.");
-            wiimote_disconnect(&wmote);
-            break;
-        };
-
-        // Change leds only when phase changes
-        now = time(NULL);
-        duration = now - start;
-        phase = (int) floorf( ( (float) duration * 5.0 / (float) length)) % 5;
-        if (phase != oldphase) {
-            printf("%ld minutes passed, %ld minutes left. (phase=%d)\n", duration / 60, (length - duration) / 60, phase);
-            // Shift the leds
-            wmote.led.bits = pow(2, phase) - 1;
-
-            // Rumble slightly longer at the end (exponentially)
-            rumble(&wmote, 100 * exp(phase + 1) / 10);
-
-            switch (phase)  {
-                case 0:
-                    printf("Sorry, time is up !\n");
-                    break;
-                case 4:
-                    printf("Hurry up ! Maybe questions ?\n");
-                    break;
-            }
-            oldphase = phase;
+            exit_clean(0);
         }
 
-        // Check battery
-        if (wmote.battery < 5) {
-            printf("Bettery low (%d%%), please replace batteries !\n", wmote.battery);
+        // Check battery change
+        if (wmote.battery != oldbattery) {
+            if (wmote.battery < 5)
+                printf("Battery low (%d%%), please replace batteries !\n", wmote.battery);
+            else
+                printf("Battery level now is %d%%.\n", wmote.battery);
+            oldbattery = wmote.battery;
+        }
+
+        // Change leds only when phase changes
+        if (length) {
+            now = time(NULL);
+            duration = now - start;
+            phase = (int) floorf( ( (float) duration * 5.0 / (float) length)) % 5;
+            if (phase != oldphase) {
+                printf("%ld minutes passed, %ld minutes left. (phase=%d)\n", duration / 60, (length - duration) / 60, phase);
+                // Shift the leds
+                wmote.led.bits = pow(2, phase) - 1;
+
+                // Rumble slightly longer at the end (exponentially)
+                rumble(&wmote, 100 * exp(phase + 1) / 10);
+
+                switch (phase)  {
+                    case 0:
+                        printf("Sorry, time is up !\n");
+                        break;
+                    case 4:
+                        printf("Hurry up ! Maybe questions ?\n");
+                        break;
+                }
+                oldphase = phase;
+            }
         }
 
 //        printf("%f - %f - %f - %ld - %ld - %ld - %d\n", ((float) duration * 5.0 / (float) length), (float) duration, (float) length, start, now, duration, phase);
@@ -251,10 +385,40 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             wmote.mode.acc = 1;
 
             // Tilt method
-            MovePointer(display, wmote.tilt.x / 4, wmote.tilt.y / 4, 1);
+            XMovePointer(display, wmote.tilt.x / 4, wmote.tilt.y / 4, 1);
 
-/*            // Infrared method
-            dots = (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? 1 : 0) +
+            if (!valid_point(point1) || (point1 == point2)) {
+                point1 = search_newpoint(&wmote, point2);
+            } else {
+                printf("Point 1 is valid %4d %4d %2d\n", point1->x, point1->y, point1->size);
+            }
+
+            if (!valid_point(point2) || (point1 == point2)) {
+                point2 = search_newpoint(&wmote, point1);
+            } else {
+                printf("Point 2 is valid %4d %4d %2d\n", point2->x, point2->y, point2->size);
+            }
+
+//            if (valid_point(point1) && ! valid_point(point2))
+//                XMovePointer(display, 1280 * (prev1x - point1->x) / 1791,
+//                                     -800 * (prev1y - point1->y) / 1791, 1);
+//            else if (valid_point(point1) && ! valid_point(point2))
+//                MovePointer(display, 1280 * (prev2x - point2->x) / 1791,
+//                                     -800 * (prev2y - point2->y) / 1791, 1);
+//            else if (point1 == point2)
+//                MovePointer(display, 1280 * (prev1x - point1->x) / 1791,
+//                                     -800 * (prev1y - point1->y) / 1791, 1);
+//            else
+//                MovePointer(display, 1280 * (prev1x - point1->x > prev2x - point2->x ? prev2x - point2->x : prev1x - point1->x) / 1791,
+//                                     -800 * (prev1y - point1->y > prev2y - point2->y ? prev2y - point2->y : prev1y - point1->y) / 1791, 1);
+
+            prev1x = point1->x;
+            prev1y = point1->y;
+            prev2x = point2->x;
+            prev2y = point2->y;
+
+            // Infrared method
+/*            dots = (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? 1 : 0) +
                    (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? 1 : 0) +
                    (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? 1 : 0) +
                    (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? 1 : 0);
@@ -267,15 +431,15 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                       (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.y : 0) +
                       (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.y : 0) +
                       (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.y : 0) ) / dots;
-/                MovePointer(display, 1280 * (1791 - x) / 1791, 800 * y / 1791, 0);
+                MovePointer(display, 1280 * (1791 - x) / 1791, 800 * y / 1791, 0);
                 prevx = x;
                 prevy = y;
             } else {
                 x = 0;
                 y = 0;
             }
-            fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
 */
+            fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
 
             // Block repeating keys
             if (keys == wmote.keys.bits) {
@@ -284,16 +448,16 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             // Left mouse button events
             if (wmote.keys.minus) {
-                ClickMouse(display, 1, 1);
+                XClickMouse(display, 1, 1);
             } else if (keys & WIIMOTE_KEY_MINUS) {
-                ClickMouse(display, 1, 0);
+                XClickMouse(display, 1, 0);
             }
 
             // Right mouse button events
             if (wmote.keys.plus) {
-                ClickMouse(display, 3, 1);
+                XClickMouse(display, 3, 1);
             } else if (keys & WIIMOTE_KEY_PLUS) {
-                ClickMouse(display, 3, 0);
+                XClickMouse(display, 3, 0);
             }
 
         } else {
@@ -306,57 +470,133 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             }
 
             // Disconnect the device
+            // TODO: Exit application too
             if (wmote.keys.home) {
                 printf("Exit on user request.\n");
-                wiimote_disconnect(&wmote);
+                exit_clean(0);
             }
 
             if (wmote.keys.b) {
                 if (debug) printf("[B] ");
             }
 
-            // Blank screen
-            if (wmote.keys.one) {
-                XActivateScreenSaver(display);
-            }
-
-            if (wmote.keys.two) {
-                if (debug) printf("[2] ");
-            }
-
             // Goto to previous workspace
             if (wmote.keys.plus) {
-                FakeKeycode(XK_Right, ControlMask | Mod1Mask);
+                XFakeKeycode(XK_Right, ControlMask | Mod1Mask);
             }
 
             // Goto to next workspace
             if (wmote.keys.minus) {
-                FakeKeycode(XK_Left, ControlMask | Mod1Mask);
+                XFakeKeycode(XK_Left, ControlMask | Mod1Mask);
             }
 
-            // Fullscreen
+            if (wmote.keys.one) {
+                if (strstr(name, "firefox") == name)
+                    XFakeKeycode(XK_F11, 0);                    // Fullscreen
+                else if (strstr(name, "opera") == name)
+                    XFakeKeycode(XK_F11, 0);
+                // TODO: Implement fullscreen toggle for openoffice (send Escape)
+                else if (strstr(name, "openoffice") == name)
+                    XFakeKeycode(XK_F9, 0);
+                else if (strstr(name, "evince") == name)
+                    XFakeKeycode(XK_F5, 0);
+                else if (strstr(name, "xpdf") == name)
+                    XFakeKeycode(XK_F, Mod1Mask);
+                else if (strstr(name, "acroread") == name)
+                    XFakeKeycode(XK_L, ControlMask);
+                else if (strstr(name, "rhythmbox") == name)
+                    XFakeKeycode(XK_F11, 0);
+                else if (strstr(name, "tvtime") == name)
+                    XFakeKeycode(XK_f, 0);
+                else if (verbose)
+                    fprintf(stderr, "No support for down key in application %s.\n", name);
+            }
+
+            // TODO: Implement screensaver toggle
+            // TODO: Also mute sound
+            if (wmote.keys.two) {
+                XActivateScreenSaver(display);                  // Blank screen
+            }
+
             if (wmote.keys.up) {
-                FakeKeycode(XK_F9, 0);
+                if (strstr(name, "firefox") == name)
+                    XFakeKeycode(XK_Up, 0);                     // Scroll Up
+                else if (strstr(name, "opera") == name)
+                    XFakeKeycode(XK_Up, 0);
+                else if (strstr(name, "pidgin") == name)
+                    XFakeKeycode(XK_Page_Up, 0);
+                else if (strstr(name, "rhythmbox") == name)
+                    XFakeKeycode(XK_Up, ControlMask);           // Volume Up
+                else if (strstr(name, "tvtime") == name)
+                    XFakeKeycode(XK_Up, 0);
+                else if (verbose)
+                    fprintf(stderr, "No support for down key in application %s.\n", name);
             }
 
             if (wmote.keys.down) {
-                FakeKeycode(XK_Escape, 0);
+                if (strstr(name, "firefox") == name)            // Scroll Down
+                    XFakeKeycode(XK_Down, 0);
+                else if (strstr(name, "opera") == name)
+                    XFakeKeycode(XK_Down, 0);
+                else if (strstr(name, "pidgin") == name)
+                    XFakeKeycode(XK_Page_Down, 0);
+                else if (strstr(name, "rhythmbox") == name)     // Volume Down
+                    XFakeKeycode(XK_Down, ControlMask);
+                else if (strstr(name, "tvtime") == name)
+                    XFakeKeycode(XK_Down, 0);
+                else if (verbose)
+                    fprintf(stderr, "No support for down key in application %s.\n", name);
             }
 
-            // Next slide
-            if (wmote.keys.left) {
-                FakeKeycode(XK_Page_Up, 0);
-            }
-
-            // Previous slide
             if (wmote.keys.right) {
-                FakeKeycode(XK_Page_Down, 0);
+                if (strstr(name, "firefox") == name)
+                    XFakeKeycode(XK_Page_Down, ControlMask);    // Next Tab
+                else if (strstr(name, "opera") == name)
+                    XFakeKeycode(XK_F6, ControlMask);
+                else if (strstr(name, "pidgin") == name)
+                    XFakeKeycode(XK_Tab, ControlMask);
+                else if (strstr(name, "openoffice") == name)
+                    XFakeKeycode(XK_Page_Down, 0);              // Next Slide
+                else if (strstr(name, "evince") == name)
+                    XFakeKeycode(XK_Page_Down, 0);
+                else if (strstr(name, "xpdf") == name)
+                    XFakeKeycode(XK_n, 0);
+                else if (strstr(name, "acroread") == name)
+                    XFakeKeycode(XK_Page_Down, 0);
+                else if (strstr(name, "rhythmbox") == name)      // Next Song
+                    XFakeKeycode(XK_Right, Mod1Mask);
+                else if (strstr(name, "tvtime") == name)         // Next Channel
+                    XFakeKeycode(XK_Up, 0);
+                else if (verbose)
+                    fprintf(stderr, "No support for right key in application %s.\n", name);
+            }
+
+            if (wmote.keys.left) {
+                if (strstr(name, "firefox") == name)
+                    XFakeKeycode(XK_Page_Up, ControlMask);      // Previous Tab
+                else if (strstr(name, "opera") == name)
+                    XFakeKeycode(XK_F6, ControlMask | ShiftMask);
+                else if (strstr(name, "pidgin") == name)
+                    XFakeKeycode(XK_Tab, ControlMask | ShiftMask);
+                else if (strstr(name, "openoffice") == name)
+                    XFakeKeycode(XK_Page_Up, 0);                // Previous Slide
+                else if (strstr(name, "evince") == name)
+                    XFakeKeycode(XK_Page_Up, 0);
+                else if (strstr(name, "xpdf") == name)
+                    XFakeKeycode(XK_p, 0);
+                else if (strstr(name, "acroread") == name)
+                    XFakeKeycode(XK_Page_Up, 0);
+                else if (strstr(name, "rhythmbox") == name)      // Previous Song
+                    XFakeKeycode(XK_Left, Mod1Mask);
+                else if (strstr(name, "tvtime") == name)         // Previous Channel
+                    XFakeKeycode(XK_Down, 0);
+                else if (verbose)
+                    fprintf(stderr, "No support for left key in application %s.\n", name);
             }
 
             // Save the keys state for next run
             keys = wmote.keys.bits;
         }
-
     }
     XCloseDisplay(display);
 
