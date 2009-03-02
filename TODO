@@ -6,18 +6,24 @@
 - Record timings and print timestamp + keypress
 - Follow keypresses so we know on what slide we are too
 - Make the mouse pointer move based on IR data
-- Make the mouse buttons do the right thing
 - Implement the power button to disconnect the device cleanly
   (this is a bug in libwiimote)
 - Use playertoggle to switch between skip forward and next playback
 
 == OpenOffice keymaps
- - left/right: change slide/channel/tab
- - up/down: change volume
- - -/+: change workspace
- - 1: fullscreen
- - 2: blank screen/mute audio
- - A: Play/Pause
- - B: enable mouse pointer
- - home: exit
- - exit: unavailable
+- left/right: change slide/channel/tab
+- up/down: change volume
+- -/+: change workspace
+- 1: fullscreen
+- 2: blank screen/mute audio
+- A: Play/Pause
+- B: enable mouse pointer
+- home: exit
+- exit: unavailable
+
+== Bugs
+- Known bug where some applications causing a BadWindow error
+  - vlc when going into fullscreen
+  - qiv when starting
+- Mouse buttons do not work (yet)
+

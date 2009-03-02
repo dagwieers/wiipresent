@@ -129,7 +129,7 @@ Status XQueryCommand(Display *display, Window window, char **name) {
     unsigned int nchildrens;
 
     // Prevent BadWindow
-    if (window == 1) return 0;
+    if (window < 2) return 0;
 
     if (verbose >= 2) printf("Trying XA_WM_COMMAND for window id: %ld\n", window);
     // Try getting the command
@@ -178,6 +178,7 @@ void rumble(wiimote_t *wmote, int msecs) {
     wmote->rumble = 0;
 }
 
+/*
 // Is this a valid point ?
 int valid_point(wiimote_ir_t *point) {
     if (point == NULL)
@@ -204,6 +205,7 @@ wiimote_ir_t *search_newpoint(wiimote_t *wmote, wiimote_ir_t *other) {
     }
     return new;
 }
+*/
 
 int main(int argc, char **argv) {
     int length = 0;
@@ -320,11 +322,13 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     time_t start = 0, now = 0, duration = 0;
     int phase = 0, oldphase = 0;
     uint16_t keys = 0;
+/*
     int x = 0, y = 0;
     int prev1x = 0, prev1y = 0;
     int prev2x = 0, prev2y = 0;
     int dots = 0;
     wiimote_ir_t *point1 = &wmote.ir1, *point2 = &wmote.ir2;
+*/
     int oldbattery = 0;
     Window oldwindow = window;
     int playertoggle = False;
@@ -404,12 +408,13 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
         // Inside the mouse functionality
         if (wmote.keys.b) {
-            wmote.mode.ir = 1;
+//            wmote.mode.ir = 1;
             wmote.mode.acc = 1;
 
             // Tilt method
             XMovePointer(display, wmote.tilt.x / 4, wmote.tilt.y / 4, 1);
 
+/*
             if (!valid_point(point1) || (point1 == point2)) {
                 point1 = search_newpoint(&wmote, point2);
             } else {
@@ -441,7 +446,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             prev2y = point2->y;
 
             // Infrared method
-/*            dots = (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? 1 : 0) +
+            dots = (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? 1 : 0) +
                    (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? 1 : 0) +
                    (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? 1 : 0) +
                    (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? 1 : 0);
@@ -461,9 +466,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 x = 0;
                 y = 0;
             }
-*/
             if (verbose >= 2) fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
 
+*/
             // Block repeating keys
             if (keys == wmote.keys.bits) {
                 continue;
@@ -495,7 +500,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             // Disconnect the device
             // TODO: Exit application too
             if (wmote.keys.home) {
-                printf("Exit on user request.\n");
+                if (verbose) printf("Exit on user request.\n");
                 exit_clean(0);
             }
 
@@ -516,6 +521,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_p, 0);
                 else if (strstr(name, "xine") == name)
                     XFakeKeycode(XK_space, 0);
+                else if (strstr(name, "tvtime") == name)
+                    XFakeKeycode(XK_a, 0);
                 else {
                     XFakeKeycode(XF86XK_AudioPlay, 0);
                     if (verbose)
@@ -547,6 +554,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 else if (strstr(name, "tvtime") == name)
                     XFakeKeycode(XK_f, 0);
                 else if (strstr(name, "mplayer") == name)
+                    XFakeKeycode(XK_f, 0);
+                else if (strstr(name, "vlc") == name)
                     XFakeKeycode(XK_f, 0);
                 else if (strstr(name, "xine") == name)
                     XFakeKeycode(XK_f, 0);
@@ -585,7 +594,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XF86XK_AudioRaiseVolume, 0);   // Volume Up
 //                    XFakeKeycode(XK_Up, ControlMask);
                 else if (strstr(name, "tvtime") == name)
-                    XFakeKeycode(XK_Up, 0);
+                    XFakeKeycode(XK_KP_Add, 0);
                 else if (strstr(name, "vlc") == name)
                     XFakeKeycode(XK_Up, ControlMask);
                 else if (strstr(name, "xine") == name)
@@ -612,7 +621,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XF86XK_AudioLowerVolume, 0);   // Volume Down
 //                    XFakeKeycode(XK_Down, ControlMask);
                 else if (strstr(name, "tvtime") == name)
-                    XFakeKeycode(XK_Down, 0);
+                    XFakeKeycode(XK_KP_Subtract, 0);
                 else if (strstr(name, "vlc") == name)
                     XFakeKeycode(XK_Down, ControlMask);
                 else if (strstr(name, "xine") == name)

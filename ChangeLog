@@ -9,6 +9,8 @@
 - Added support for XF86 Audio keys
 - Implemented fullscreen toggle for OpenOffice
 - Mute audio when blanking screen
+- Added manpage in asciidoc
+- Added RPM spec file
 
 * Tue Feb 10 2009 Dag Wieers <dag@wieers.com>
 - Added -b/--bluetooth option to specify bluetooth address

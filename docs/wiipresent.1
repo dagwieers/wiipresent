@@ -1,0 +1,90 @@
+.\" ** You probably do not want to edit this file directly **
+.\" It was generated using the DocBook XSL Stylesheets (version 1.69.1).
+.\" Instead of manually editing it, you probably should edit the DocBook XML
+.\" source for it and then use the DocBook XSL Stylesheets to regenerate it.
+.TH "WIIPRESENT" "1" "03/02/2009" "" ""
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.SH "NAME"
+wiipresent \- tool to control applications using the wiimote
+.SH "SYNOPSIS"
+wiipresent [\-v] [\-l length] [\-b bluetooth\-address ]
+.sp
+.SH "DESCRIPTION"
+wiipresent is a tool to control applications using the wiimote. It was originally developed for using the wiimote to give presentations using openoffice or xpdf, but is now turned into a tool to control your mouse and/or other applications.
+.sp
+.SH "OPTIONS"
+.TP
+\-b bt\-address, \-\-bluetooth=bt\-address
+Wiimote bluetooth address (use hcitool scan)
+.TP
+\-d name, \-\-display=name
+X display to use
+.TP
+\-l length, \-\-length=minutes
+presentation length in minutes
+.TP
+\-h, \-\-help
+display this help and exit
+.TP
+\-v, \-\-verbose
+increase verbosity
+.TP
+\-\-version
+output version information and exit
+.SH "USAGE"
+Before you can start using wiipresent you need to know the bluetooth address of the wiimote you want to use. You can scan your bluetooth viscinity by using hcitool like:
+.sp
+.sp
+.nf
+hcitool scan
+.fi
+after having pressed the 1 and 2 keys on your wiimote once. You will then see something like:
+.sp
+.sp
+.nf
+[root@moria ~]# hcitool scan
+Scanning ...
+00:21:64:EF:62:F5       Nokia E71
+00:1B:7A:F8:B5:64       Nintendo RVL\-CNT\-01
+.fi
+Then start wiipresent using the following syntax:
+.sp
+.sp
+.nf
+[dag@moria ~]# wiipresent \-b 00:1B:7A:F8:B5:64
+Please press 1+2 on the wiimote with address 00:1B:7A:F8:B5:64...
+Battery level now is 81%.
+.fi
+.SH "BUGS"
+This program is free of bugs. Yeah right.
+.sp
+If you have improvements or bugreports, please send them to: [1]\&\fIdag@wieers.com\fR
+.sp
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+\fBNote\fR
+Please see the TODO file for known bugs and future plans.
+.sp
+.SH "SEE ALSO"
+.sp
+.nf
+hcitool(1)
+.fi
+.SH "AUTHOR"
+Written by Dag Wieers [1]\&\fIdag@wieers.com\fR
+.sp
+Homepage at [2]\&\fIhttp://dag.wieers.com/home\-made/wiipresent/\fR
+.sp
+.SH "REFERENCES"
+.TP 3
+1.\ dag@wieers.com
+\%mailto:dag@wieers.com
+.TP 3
+2.\ http://dag.wieers.com/home\-made/wiipresent/
+\%http://dag.wieers.com/home\-made/wiipresent/
