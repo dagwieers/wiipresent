@@ -1,7 +1,9 @@
 = WiiPresent - Presentations using the Wiimote
 
 WiiPresent is a small program that enables you to use a Nintendo WiiMote
-for giving presentations.
+for giving presentationsi using Open Office, xpdf, evince or Acrobat Reader.
+
+But WiiPresent can also control multimedia applications or firefox.
 
 It does this by translating WiiMote events into keypresses for applications.
 
