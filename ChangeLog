@@ -1,8 +1,9 @@
 * Mon Mar 02 2009 Dag Wieers <dag@wieers.com>
 - Detect application focus and adapt key-combinations
-- Added support for openoffice, evince, gqview, xpdf
-- Added support for firefox, opera, pidgin
+- Added support for acrobat reader, evince, openoffice, xpdf
+- Added support for firefox, nautilus, opera, pidgin
 - Added support for mplayer, rhythmbox, tvtime, vlc, xine
+- Added support for eog, gqview, qiv
 - Disable screensaver during WiiPresent run
 - Added ShiftMask in XFakeKeycode
 - Use B key to enable mouse pointer (used to be A)

@@ -22,8 +22,9 @@
 - exit: unavailable
 
 == Bugs
-- Known bug where some applications causing a BadWindow error
+- Known bug where some applications are causing a BadWindow error
   - vlc when going into fullscreen
-  - qiv when starting
+- Applications loosing focus
+  - qiv in fullscreen
 - Mouse buttons do not work (yet)
-
+- Battery status updates do not seem to work ?
