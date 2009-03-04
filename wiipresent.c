@@ -94,7 +94,7 @@ void XMovePointer(Display *display, int xpos, int ypos, int relative) {
 
 void XClickMouse(Display *display, int button, int release) {
     XTestFakeButtonEvent(display, button, release, 0);
-    XSync(display, False);
+//    XSync(display, False);
 }
 
 Status XFetchProperty (register Display *display, Window window, int property, char **name) {
@@ -137,7 +137,7 @@ Status XQueryCommand(Display *display, Window window, char **name) {
         if (verbose >= 3) fprintf(stderr, "Found application %s (0x%x) using XGetClassHint.\n", *name, (unsigned int) window);
     } else if (XFetchProperty(display, window, XA_WM_COMMAND, name) != 0) {
         if (verbose >= 3) fprintf(stderr, "Found application %s (0x%x) using XA_WM_COMMAND.\n", *name, (unsigned int) window);
-    } else if (XQueryCommand(display, window - window % 0x100000 + 1, name) != 0) {
+    } else if (window != window - window % 0x100000 + 1 && XQueryCommand(display, window - window % 0x100000 + 1, name) != 0) {
         if (verbose >= 3) fprintf(stderr, "Found application %s (0x%x) using guessed parent window.\n", *name, (unsigned int) (window - window % 0x100000 + 1));
     } else if (XQueryTree(display, window, &root_window, &parent_window, &children_window, &nchildrens) != 0) {
         if (parent_window) {
@@ -330,6 +330,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     int playertoggle = False;
     int fullscreentoggle = False;
     int screensavertoggle = False;
+    int mouse = False;
+    int leftmousebutton = False;
+    int rightmousebutton = False;
 
     char *name;
     XGetInputFocus(display, &window, &revert);
@@ -404,8 +407,14 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
         // Inside the mouse functionality
         if (wmote.keys.b) {
-//            wmote.mode.ir = 1;
-            wmote.mode.acc = 1;
+            if (! mouse) {
+                if (verbose >= 3) fprintf(stderr, "Mouse enabled.\n");
+                mouse = ! mouse;
+
+                wmote.mode.ir = 1;
+                wmote.mode.acc = 1;
+            }
+
 
             // Tilt method
             XMovePointer(display, wmote.tilt.x / 4, wmote.tilt.y / 4, 1);
@@ -471,22 +480,44 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             }
 
             // Left mouse button events
-            if (wmote.keys.minus) {
-                XClickMouse(display, 1, 1);
-            } else if (keys & WIIMOTE_KEY_MINUS) {
-                XClickMouse(display, 1, 0);
+            if (wmote.keys.minus || wmote.keys.a) {
+                if (! leftmousebutton) {
+                    if (verbose >= 3) fprintf(stderr, "Mouse left button pressed.\n");
+                    XClickMouse(display, 1, 1);
+                    leftmousebutton = ! leftmousebutton;
+                }
+            } else {
+                if (leftmousebutton) {
+                    if (verbose >= 3) fprintf(stderr, "Mouse left button released.\n");
+                    XClickMouse(display, 1, 0);
+                    leftmousebutton = ! leftmousebutton;
+                }
             }
 
             // Right mouse button events
             if (wmote.keys.plus) {
-                XClickMouse(display, 3, 1);
-            } else if (keys & WIIMOTE_KEY_PLUS) {
-                XClickMouse(display, 3, 0);
+                if (! rightmousebutton) {
+                    if (verbose >= 3) fprintf(stderr, "Mouse right button pressed.\n");
+                    XClickMouse(display, 3, 1);
+                    rightmousebutton = ! rightmousebutton;
+                }
+            } else {
+                if (rightmousebutton) {
+                    if (verbose >= 3) fprintf(stderr, "Mouse right button released.\n");
+                    XClickMouse(display, 3, 0);
+                    rightmousebutton = ! rightmousebutton;
+                }
             }
 
         } else {
-            wmote.mode.ir = 0;
-            wmote.mode.acc = 0;
+            if (mouse) {
+                if (verbose >= 3) fprintf(stderr, "Mouse disabled.\n");
+                mouse = ! mouse;
+
+                wmote.mode.ir = 0;
+                wmote.mode.acc = 0;
+            }
+
 
             // Block repeating keys
             if (keys == wmote.keys.bits) {
@@ -511,7 +542,11 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             }
 
             if (wmote.keys.a) {
-                if (strcasestr(name, "rhythmbox") == name) {    // Play/Pause
+                if (strcasestr(name, "firefox") == name) {          // Fullscreen
+                    XFakeKeycode(XK_Return, 0);
+                } else if (strcasestr(name, "opera") == name) {
+                    XFakeKeycode(XK_Return, 0);
+                } else if (strcasestr(name, "rhythmbox") == name) {    // Play/Pause
                     XFakeKeycode(XK_space, ControlMask); 
                 } else if (strcasestr(name, "mplayer") == name) {
                     XFakeKeycode(XK_p, 0);
@@ -593,9 +628,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             if (wmote.keys.up) {
                 if (strcasestr(name, "firefox") == name) {          // Scroll Up
-                    XFakeKeycode(XK_Up, 0);
+                    XFakeKeycode(XK_Tab, ShiftMask);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_Up, 0);
+                    XFakeKeycode(XK_Up, ControlMask);
                 } else if (strcasestr(name, "pidgin") == name) {
                     XFakeKeycode(XK_Page_Up, 0);
                 } else if (strcasestr(name, "rhythmbox") == name) { // Volume Up
@@ -626,9 +661,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             if (wmote.keys.down) {
                 if (strcasestr(name, "firefox") == name) {          // Scroll Down
-                    XFakeKeycode(XK_Down, 0);
+                    XFakeKeycode(XK_Tab, 0);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_Down, 0);
+                    XFakeKeycode(XK_Down, ControlMask);
                 } else if (strcasestr(name, "pidgin") == name) {
                     XFakeKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "rhythmbox") == name) {
