@@ -1,11 +1,14 @@
-* Thu Mar 05 2009 Dag Wieers <dag@wieers.com>
+* 0.7svn - release ??/??/2009
+
+* 0.7 - release 05/03/2009
 - Up/Down keys loop through links instead of scrolling in Firefox/Opera
 - Make mouse buttons work reliably
 - Added -i/--infrared option to enable infrared sensor
 - Added -t/--tilt option to enable tilt sensors
 - Added support for yelp
+- Fixes to Makefile to support XFree86 libraries in /usr/X11R6
 
-* Mon Mar 02 2009 Dag Wieers <dag@wieers.com>
+* 0.6 - release 02/03/2009
 - Detect application focus and adapt key-combinations
 - Added support for acrobat reader, evince, openoffice, xpdf
 - Added support for firefox, nautilus, opera, pidgin
@@ -20,20 +23,20 @@
 - Added manpage in asciidoc
 - Added RPM spec file
 
-* Tue Feb 10 2009 Dag Wieers <dag@wieers.com>
+* 0.5 - release 10/02/2009
 - Added -b/--bluetooth option to specify bluetooth address
 - Added -d/--display option to specify the X display to use
 - Added -l/--length option to specify the presentation length
 - Added -h/--help option to display a help message
 - Added -v/--version option to display the wiipresent version
 
-* Mon Feb 09 2009 Dag Wieers <dag@wieers.com>
+* 0.4 - release 09/02/2009
 - Use tilt information to move mouse pointer
 - Show battery information
 - Implemented left and right mouse buttons
 - Simple battery level check
 
-* Sat Feb 07 2009 Dag Wieers <dag@wieers.com>
+* 0.3 - release 07/02/2009
 - Ignore repeating keys
 - Rumble wiimote when associated
 - Divide presentation time into 5 phases
@@ -41,5 +44,5 @@
 - Rumble the wiimote when chaning phase
 - Increase rumble time exponentially based on phase
 
-* Fri Feb 06 2009 Dag Wieers <dag@wieers.com>
+* 0.2 - release 06/02/2009
 - Initial test program using libwiimote

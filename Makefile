@@ -6,11 +6,12 @@ sysconfdir = /etc
 bindir = $(prefix)/bin
 datadir = $(prefix)/share
 mandir = $(datadir)/man
+lib = lib
 
 CC = cc
 CFLAGS = -Wall -O2
 OPTFLAGS = -I /usr/include/libcwiimote -D_ENABLE_TILT -D_ENABLE_FORCE -D_DISABLE_BLOCKING_UPDATE
-LDFLAGS= -lm -lX11 -lXtst -lcwiimote -lbluetooth
+LDFLAGS= -lm -lX11 -lXtst -lcwiimote -lbluetooth -L/usr/X11R6/$(lib)
 
 .PHONY: all install docs clean
 
@@ -35,7 +36,7 @@ clean:
 
 dist: clean
 	$(MAKE) -C docs dist
-	find . ! -wholename '*/.svn*' | pax -d -w -x ustar -s ,^,$(name)-$(version)/, | bzip2 >../$(name)-$(version).tar.bz2
+	find . -type f ! -wholename '*/.svn*' | pax -d -w -x ustar -s ,^\./,$(name)-$(version)/, | bzip2 >../$(name)-$(version).tar.bz2
 
 rpm: dist
 	rpmbuild -tb --clean --rmsource --rmspec --define "_rpmfilename %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm" --define "_rpmdir ../" --define "debug_package %nil" ../$(name)-$(version).tar.bz2

@@ -38,7 +38,7 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #include "wiimote_api.h"
 
 static char NAME[] = "wiipresent";
-static char VERSION[] = "0.7";
+static char VERSION[] = "0.7svn";
 
 static char *displayname = NULL;
 static Display *display = NULL;
@@ -156,6 +156,7 @@ Status XQueryCommand(Display *display, Window window, char **name) {
 void exit_clean(int sig) {
     wiimote_disconnect(&wmote);
     XSetScreenSaver(display, timeout_return, interval_return, prefer_blanking_return, allow_exposures_return);
+    XCloseDisplay(display);
     switch(sig) {
         case(0):
         case(2):
@@ -167,7 +168,6 @@ void exit_clean(int sig) {
 }
 
 void rumble(wiimote_t *wmote, int msecs) {
-    wiimote_update(wmote);
     wmote->rumble = 1;
     wiimote_update(wmote);
     usleep(msecs * 1000);
@@ -290,6 +290,19 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         }
     }
 
+    // Obtain the X11 display.
+    if (displayname == NULL)
+        displayname = getenv("DISPLAY");
+
+    if (displayname == NULL)
+        displayname = ":0.0";
+
+    display = XOpenDisplay(displayname);
+    if (display == NULL) {
+        fprintf(stderr, "%s: Cannot open display `%s'.\n", NAME, displayname);
+        return -1;
+    }
+
     // Wait for 1+2
     if (btaddress == NULL) {
 //        printf("Please press 1+2 on a wiimote in the viscinity...");
@@ -309,24 +322,11 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     if (tilt)
         fprintf(stderr, "Mouse movement controlled by tilting wiimote.\n");
     else if (infrared)
-        fprintf(stderr, "Mouse movement controlled by infrared reception emitted from sensor bar.\n");
+        fprintf(stderr, "Mouse movement controlled by infrared using sensor bar. (EXPERIMNTAL)\n");
     else
         fprintf(stderr, "Mouse movement disabled.\n");
 
     if (length) fprintf(stderr, "Presentation length is %dmin divided in 5 slots of %dmin.\n", length/60, length/60/5);
-
-    // Obtain the X11 display.
-    if (displayname == NULL)
-        displayname = getenv("DISPLAY");
-
-    if (displayname == NULL)
-        displayname = ":0.0";
-
-    display = XOpenDisplay(displayname);
-    if (display == NULL) {
-        fprintf(stderr, "%s: can't open display `%s'.\n", NAME, displayname);
-        return -1;
-    }
 
     // Disable screensaver
     XGetScreenSaver(display, &timeout_return, &interval_return, &prefer_blanking_return, &allow_exposures_return);
@@ -343,7 +343,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     int prev1x = 0, prev1y = 0;
     int prev2x = 0, prev2y = 0;
     int dots = 0;
-    wiimote_ir_t *point1 = &wmote.ir1, *point2 = &wmote.ir2;
+//    wiimote_ir_t *point1 = &wmote.ir1, *point2 = &wmote.ir2;
 
     int oldbattery = 0;
     Window oldwindow = window;
@@ -353,6 +353,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     int mouse = False;
     int leftmousebutton = False;
     int rightmousebutton = False;
+
+    int ret;
 
     char *name;
     XGetInputFocus(display, &window, &revert);
@@ -384,17 +386,19 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             usleep(10000);
         }
 
+        // FIXME: We should reconnect at our own convenience
         if (wiimote_update(&wmote) < 0) {
             printf("Lost connection.");
             exit_clean(0);
         }
 
         // Check battery change
-        if (wmote.battery != oldbattery) {
+        // FIXME: Battery level does not seem to get updated ??
+        if (wmote.battery < oldbattery) {
             if (wmote.battery < 5)
                 printf("Battery low (%d%%), please replace batteries !\n", wmote.battery);
             else
-                printf("Battery level now is %d%%.\n", wmote.battery);
+                printf("Battery level is now %d%%.\n", wmote.battery);
             oldbattery = wmote.battery;
         }
 
@@ -428,14 +432,15 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         // Inside the mouse functionality
         if (wmote.keys.b) {
             if (! mouse) {
-                if (verbose >= 3) fprintf(stderr, "Mouse enabled.\n");
-                mouse = ! mouse;
-
                 if (tilt) {
+                    if (verbose >= 3) fprintf(stderr, "Tilt sensors enabled. Mouse enabled.\n");
                     wmote.mode.acc = 1;
                 } else if (infrared) {
+                    if (verbose >= 3) fprintf(stderr, "Infrared camera enabled. Mouse enabled.\n");
                     wmote.mode.ir = 1;
                 }
+
+                mouse = ! mouse;
             }
 
             // Tilt method
@@ -445,7 +450,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             // Infrared method
             } else if (infrared) {
 
-                if (!valid_point(point1) || (point1 == point2)) {
+/*                if (!valid_point(point1) || (point1 == point2)) {
                     point1 = search_newpoint(&wmote, point2);
                 } else {
                     fprintf(stderr, "Point 1 is valid %4d %4d %2d\n", point1->x, point1->y, point1->size);
@@ -469,7 +474,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 else
                     XMovePointer(display, 1280 * (prev1x - point1->x > prev2x - point2->x ? prev2x - point2->x : prev1x - point1->x) / 1791,
                                          -800 * (prev1y - point1->y > prev2y - point2->y ? prev2y - point2->y : prev1y - point1->y) / 1791, 1);
-
+*/
 /*
                 prev1x = point1->x;
                 prev1y = point1->y;
@@ -550,11 +555,14 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             }
         } else {
             if (mouse) {
-                if (verbose >= 3) fprintf(stderr, "Mouse disabled.\n");
+                if (tilt) {
+                    if (verbose >= 4) fprintf(stderr, "Tilt sensors disabled. Mouse disabled.\n");
+                    wmote.mode.acc = 0;
+                } else if (infrared) {
+                    if (verbose >= 4) fprintf(stderr, "Infrared camera disabled. Mouse disabled.\n");
+                    wmote.mode.ir = 0;
+                }
                 mouse = ! mouse;
-
-                wmote.mode.acc = 0;
-                wmote.mode.ir = 0;
             }
 
 
@@ -581,14 +589,21 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Home, 0);
                 } else if (strcasestr(name, "opera") == name) {
                     XFakeKeycode(XK_Home, 0);
+                } else if (strcasestr(name, "evince") == name) {
+                    XFakeKeycode(XK_Home, ControlMask);
+                } else if (strcasestr(name, "eog") == name) {
+                    XFakeKeycode(XK_Home, 0);
+                } else if (strcasestr(name, "xpdf") == name) {
+                    XFakeKeycode(XK_Home, ControlMask);
+                } else if (strcasestr(name, "acroread") == name) {
+                    XFakeKeycode(XK_Home, 0);
                 } else if (strcasestr(name, "nautilus") == name) {
                     XFakeKeycode(XK_BackSpace, ShiftMask);
                 } else if (strcasestr(name, "openoffice") == name ||
                            strcasestr(name, "soffice") == name) {
                     XFakeKeycode(XK_Home, 0);
                 } else {
-                    if (verbose)
-                        fprintf(stderr, "No home-key support for application %s.\n", name);
+                    if (verbose) fprintf(stderr, "No home-key support for application %s.\n", name);
                 }
             }
 
@@ -599,8 +614,20 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Return, 0);
                 } else if (strcasestr(name, "opera") == name) {
                     XFakeKeycode(XK_Return, 0);
+                } else if (strcasestr(name, "evince") == name) {        // Next Slide
+                    XFakeKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "openoffice") == name ||
                            strcasestr(name, "soffice") == name) {
+                    XFakeKeycode(XK_Page_Down, 0);
+                } else if (strcasestr(name, "gqview") == name) {
+                    XFakeKeycode(XK_Page_Down, 0);
+                } else if (strcasestr(name, "qiv") == name) {
+                    XFakeKeycode(XK_space, 0);
+                } else if (strcasestr(name, "eog") == name) {
+                    XFakeKeycode(XK_Right, 0);
+                } else if (strcasestr(name, "xpdf") == name) {
+                    XFakeKeycode(XK_n, 0);
+                } else if (strcasestr(name, "acroread") == name) {
                     XFakeKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "rhythmbox") == name) { // Play/Pause
                     XFakeKeycode(XK_space, ControlMask); 
@@ -615,8 +642,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 } else if (strcasestr(name, "nautilus") == name) {
                     XFakeKeycode(XK_Return, ShiftMask);
                 } else {
-                    if (verbose)
-                        fprintf(stderr, "No A-key support for application %s.\n", name);
+                    if (verbose) fprintf(stderr, "No A-key support for application %s.\n", name);
                 }
                 playertoggle = ! playertoggle;
             }
@@ -654,8 +680,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_f, 0);
                 } else if (strcasestr(name, "xine") == name) {
                     XFakeKeycode(XK_f, 0);
-                } else if (verbose) {
-                    fprintf(stderr, "No one-key support for application %s.\n", name);
+                } else {
+                    if (verbose) fprintf(stderr, "No one-key support for application %s.\n", name);
                 }
                 fullscreentoggle = ! fullscreentoggle;
             }

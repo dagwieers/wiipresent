@@ -9,6 +9,7 @@
 - Implement the power button to disconnect the device cleanly
   (this is a bug in libwiimote)
 - Use playertoggle to switch between skip forward and next playback
+- On disconnect, wait for reconnect
 
 == OpenOffice keymaps
 - left/right: change slide/channel/tab
