@@ -94,7 +94,7 @@ void XMovePointer(Display *display, int xpos, int ypos, int relative) {
 
 void XClickMouse(Display *display, int button, int release) {
     XTestFakeButtonEvent(display, button, release, 0);
-//    XSync(display, False);
+    XSync(display, False);
 }
 
 Status XFetchProperty (register Display *display, Window window, int property, char **name) {
