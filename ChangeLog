@@ -1,6 +1,9 @@
 * Thu Mar 05 2009 Dag Wieers <dag@wieers.com>
 - Up/Down keys loop through links instead of scrolling in Firefox/Opera
 - Make mouse buttons work reliably
+- Added -i/--infrared option to enable infrared sensor
+- Added -t/--tilt option to enable tilt sensors
+- Added support for yelp
 
 * Mon Mar 02 2009 Dag Wieers <dag@wieers.com>
 - Detect application focus and adapt key-combinations

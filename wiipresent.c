@@ -38,7 +38,7 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #include "wiimote_api.h"
 
 static char NAME[] = "wiipresent";
-static char VERSION[] = "0.6";
+static char VERSION[] = "0.7";
 
 static char *displayname = NULL;
 static Display *display = NULL;
@@ -174,7 +174,6 @@ void rumble(wiimote_t *wmote, int msecs) {
     wmote->rumble = 0;
 }
 
-/*
 // Is this a valid point ?
 int valid_point(wiimote_ir_t *point) {
     if (point == NULL)
@@ -201,11 +200,12 @@ wiimote_ir_t *search_newpoint(wiimote_t *wmote, wiimote_ir_t *other) {
     }
     return new;
 }
-*/
 
 int main(int argc, char **argv) {
     int length = 0;
     char *btaddress = NULL;
+    int infrared = False;
+    int tilt = True;
     wmote = (wiimote_t) WIIMOTE_INIT;
 
     int c;
@@ -219,13 +219,16 @@ int main(int argc, char **argv) {
             {"bluetooth", 1, 0, 'b'},
             {"display", 1, 0, 'd'},
             {"help", 0, 0, 'h'},
+            {"ir", 0, 0, 'i'},
+            {"infrared", 0, 0, 'i'},
             {"length", 1, 0, 'l'},
+            {"tilt", 0, 0, 't'},
             {"verbose", 0, 0, 'v'},
             {"version", 0, 0, 'V'},
             {0, 0, 0, 0}
         };
 
-        c = getopt_long (argc, argv, "b:d:hl:v", long_options, &option_index);
+        c = getopt_long (argc, argv, "b:d:hil:tvV", long_options, &option_index);
         if (c == -1)
             break;
 
@@ -240,9 +243,11 @@ int main(int argc, char **argv) {
                 printf("Nintendo Wiimote presentation controller\n\
 \n\
 %s options:\n\
-  -b, --bluetooth=btaddress      Wiimote bluetooth address (use hcitool scan)\n\
+  -b, --bluetooth=btaddress      wiimote bluetooth address (use hcitool scan)\n\
   -d, --display=name             X display to use\n\
+  -i, --infrared                 use infrared sensor to move mouse pointer\n\
   -l, --length=minutes           presentation length in minutes\n\
+  -t, --tilt                     use tilt sensors to move mouse pointer\n\
 \n\
   -h, --help                     display this help and exit\n\
   -v, --verbose                  increase verbosity\n\
@@ -250,8 +255,16 @@ int main(int argc, char **argv) {
 \n\
 Report bugs to <dag@wieers.com>.\n", NAME);
                 exit(0);
+            case 'i':
+                infrared = True;
+                tilt = False;
+                continue;
             case 'l':
                 length = atoi(optarg) * 60;
+                continue;
+            case 't':
+                tilt = True;
+                infrared = False;
                 continue;
             case 'v':
                 verbose += 1;
@@ -293,6 +306,13 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     signal(SIGHUP, exit_clean);
     signal(SIGQUIT, exit_clean);
 
+    if (tilt)
+        fprintf(stderr, "Mouse movement controlled by tilting wiimote.\n");
+    else if (infrared)
+        fprintf(stderr, "Mouse movement controlled by infrared reception emitted from sensor bar.\n");
+    else
+        fprintf(stderr, "Mouse movement disabled.\n");
+
     if (length) fprintf(stderr, "Presentation length is %dmin divided in 5 slots of %dmin.\n", length/60, length/60/5);
 
     // Obtain the X11 display.
@@ -318,13 +338,13 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     time_t start = 0, now = 0, duration = 0;
     int phase = 0, oldphase = 0;
     uint16_t keys = 0;
-/*
+
     int x = 0, y = 0;
     int prev1x = 0, prev1y = 0;
     int prev2x = 0, prev2y = 0;
     int dots = 0;
     wiimote_ir_t *point1 = &wmote.ir1, *point2 = &wmote.ir2;
-*/
+
     int oldbattery = 0;
     Window oldwindow = window;
     int playertoggle = False;
@@ -411,69 +431,73 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 if (verbose >= 3) fprintf(stderr, "Mouse enabled.\n");
                 mouse = ! mouse;
 
-                wmote.mode.ir = 1;
-                wmote.mode.acc = 1;
+                if (tilt) {
+                    wmote.mode.acc = 1;
+                } else if (infrared) {
+                    wmote.mode.ir = 1;
+                }
             }
-
 
             // Tilt method
-            XMovePointer(display, wmote.tilt.x / 4, wmote.tilt.y / 4, 1);
-
-/*
-            if (!valid_point(point1) || (point1 == point2)) {
-                point1 = search_newpoint(&wmote, point2);
-            } else {
-                fprintf(stderr, "Point 1 is valid %4d %4d %2d\n", point1->x, point1->y, point1->size);
-            }
-
-            if (!valid_point(point2) || (point1 == point2)) {
-                point2 = search_newpoint(&wmote, point1);
-            } else {
-                fprintf(stderr, "Point 2 is valid %4d %4d %2d\n", point2->x, point2->y, point2->size);
-            }
-
-//            if (valid_point(point1) && ! valid_point(point2))
-//                XMovePointer(display, 1280 * (prev1x - point1->x) / 1791,
-//                                     -800 * (prev1y - point1->y) / 1791, 1);
-//            else if (valid_point(point1) && ! valid_point(point2))
-//                MovePointer(display, 1280 * (prev2x - point2->x) / 1791,
-//                                     -800 * (prev2y - point2->y) / 1791, 1);
-//            else if (point1 == point2)
-//                MovePointer(display, 1280 * (prev1x - point1->x) / 1791,
-//                                     -800 * (prev1y - point1->y) / 1791, 1);
-//            else
-//                MovePointer(display, 1280 * (prev1x - point1->x > prev2x - point2->x ? prev2x - point2->x : prev1x - point1->x) / 1791,
-//                                     -800 * (prev1y - point1->y > prev2y - point2->y ? prev2y - point2->y : prev1y - point1->y) / 1791, 1);
-
-            prev1x = point1->x;
-            prev1y = point1->y;
-            prev2x = point2->x;
-            prev2y = point2->y;
+            if (tilt) {
+                XMovePointer(display, wmote.tilt.x / 4, wmote.tilt.y / 4, 1);
 
             // Infrared method
-            dots = (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? 1 : 0) +
-                   (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? 1 : 0) +
-                   (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? 1 : 0) +
-                   (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? 1 : 0);
-            if (dots > 0) {
-                x = ( (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? wmote.ir1.x : 0) +
-                      (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.x : 0) +
-                      (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.x : 0) +
-                      (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.x : 0) ) / dots;
-                y = ( (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? wmote.ir1.y : 0) +
-                      (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.y : 0) +
-                      (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.y : 0) +
-                      (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.y : 0) ) / dots;
-                MovePointer(display, 1280 * (1791 - x) / 1791, 800 * y / 1791, 0);
-                prevx = x;
-                prevy = y;
-            } else {
-                x = 0;
-                y = 0;
-            }
-            if (verbose >= 2) fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
+            } else if (infrared) {
 
+                if (!valid_point(point1) || (point1 == point2)) {
+                    point1 = search_newpoint(&wmote, point2);
+                } else {
+                    fprintf(stderr, "Point 1 is valid %4d %4d %2d\n", point1->x, point1->y, point1->size);
+                }
+
+                if (!valid_point(point2) || (point1 == point2)) {
+                    point2 = search_newpoint(&wmote, point1);
+                } else {
+                    fprintf(stderr, "Point 2 is valid %4d %4d %2d\n", point2->x, point2->y, point2->size);
+                }
+
+                if (valid_point(point1) && ! valid_point(point2))
+                    XMovePointer(display, 1280 * (prev1x - point1->x) / 1791,
+                                         -800 * (prev1y - point1->y) / 1791, 1);
+                else if (valid_point(point1) && ! valid_point(point2))
+                    XMovePointer(display, 1280 * (prev2x - point2->x) / 1791,
+                                         -800 * (prev2y - point2->y) / 1791, 1);
+                else if (point1 == point2)
+                    XMovePointer(display, 1280 * (prev1x - point1->x) / 1791,
+                                         -800 * (prev1y - point1->y) / 1791, 1);
+                else
+                    XMovePointer(display, 1280 * (prev1x - point1->x > prev2x - point2->x ? prev2x - point2->x : prev1x - point1->x) / 1791,
+                                         -800 * (prev1y - point1->y > prev2y - point2->y ? prev2y - point2->y : prev1y - point1->y) / 1791, 1);
+
+/*
+                prev1x = point1->x;
+                prev1y = point1->y;
+                prev2x = point2->x;
+                prev2y = point2->y;
+
+                dots = (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? 1 : 0) +
+                       (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? 1 : 0) +
+                       (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? 1 : 0) +
+                       (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? 1 : 0);
+                if (dots > 0) {
+                    x = ( (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? wmote.ir1.x : 0) +
+                          (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.x : 0) +
+                          (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.x : 0) +
+                          (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.x : 0) ) / dots;
+                    y = ( (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? wmote.ir1.y : 0) +
+                          (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.y : 0) +
+                          (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.y : 0) +
+                          (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.y : 0) ) / dots;
+                    XMovePointer(display, 1280 * (1791 - x) / 1791, 800 * y / 1791, 0);
+                } else {
+                    x = 0;
+                    y = 0;
+                }
 */
+                if (verbose >= 2) fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
+            }
+
             // Block repeating keys
             if (keys == wmote.keys.bits) {
                 continue;
@@ -509,26 +533,34 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 }
             }
 
+            if (wmote.keys.up) {
+                if (strcasestr(name, "firefox") == name) {          // Scroll Up
+                    XFakeKeycode(XK_Page_Up, 0);
+                } else if (strcasestr(name, "opera") == name) {
+                    XFakeKeycode(XK_Page_Up, 0);
+                }
+            }
+
+            if (wmote.keys.down) {
+                if (strcasestr(name, "firefox") == name) {          // Scroll Up
+                    XFakeKeycode(XK_Page_Down, 0);
+                } else if (strcasestr(name, "opera") == name) {
+                    XFakeKeycode(XK_Page_Down, 0);
+                }
+            }
         } else {
             if (mouse) {
                 if (verbose >= 3) fprintf(stderr, "Mouse disabled.\n");
                 mouse = ! mouse;
 
-                wmote.mode.ir = 0;
                 wmote.mode.acc = 0;
+                wmote.mode.ir = 0;
             }
 
 
             // Block repeating keys
             if (keys == wmote.keys.bits) {
                 continue;
-            }
-
-            // Disconnect the device
-            // TODO: Exit application too
-            if (wmote.keys.home) {
-                if (verbose) printf("Exit on user request.\n");
-                exit_clean(0);
             }
 
             // Goto to previous workspace
@@ -541,12 +573,36 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 XFakeKeycode(XK_Left, ControlMask | Mod1Mask);
             }
 
+            // Go home/back
+            if (wmote.keys.home) {
+                if (strcasestr(name, "firefox") == name) {          // Enter
+                    XFakeKeycode(XK_Home, 0);
+                } else if (strcasestr(name, "yelp") == name) {
+                    XFakeKeycode(XK_Home, 0);
+                } else if (strcasestr(name, "opera") == name) {
+                    XFakeKeycode(XK_Home, 0);
+                } else if (strcasestr(name, "nautilus") == name) {
+                    XFakeKeycode(XK_BackSpace, ShiftMask);
+                } else if (strcasestr(name, "openoffice") == name ||
+                           strcasestr(name, "soffice") == name) {
+                    XFakeKeycode(XK_Home, 0);
+                } else {
+                    if (verbose)
+                        fprintf(stderr, "No home-key support for application %s.\n", name);
+                }
+            }
+
             if (wmote.keys.a) {
-                if (strcasestr(name, "firefox") == name) {          // Fullscreen
+                if (strcasestr(name, "firefox") == name) {          // Enter
+                    XFakeKeycode(XK_Return, 0);
+                } else if (strcasestr(name, "yelp") == name) {
                     XFakeKeycode(XK_Return, 0);
                 } else if (strcasestr(name, "opera") == name) {
                     XFakeKeycode(XK_Return, 0);
-                } else if (strcasestr(name, "rhythmbox") == name) {    // Play/Pause
+                } else if (strcasestr(name, "openoffice") == name ||
+                           strcasestr(name, "soffice") == name) {
+                    XFakeKeycode(XK_Page_Down, 0);
+                } else if (strcasestr(name, "rhythmbox") == name) { // Play/Pause
                     XFakeKeycode(XK_space, ControlMask); 
                 } else if (strcasestr(name, "mplayer") == name) {
                     XFakeKeycode(XK_p, 0);
@@ -557,11 +613,10 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 } else if (strcasestr(name, "qiv") == name) {       // Maximize
                     XFakeKeycode(XK_m, 0);
                 } else if (strcasestr(name, "nautilus") == name) {
-                    XFakeKeycode(XK_Return, 0);
+                    XFakeKeycode(XK_Return, ShiftMask);
                 } else {
-                    XFakeKeycode(XF86XK_AudioPlay, 0);
                     if (verbose)
-                        fprintf(stderr, "No A-key support for application %s. (Sending play/mute to X)\n", name);
+                        fprintf(stderr, "No A-key support for application %s.\n", name);
                 }
                 playertoggle = ! playertoggle;
             }
@@ -631,6 +686,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Tab, ShiftMask);
                 } else if (strcasestr(name, "opera") == name) {
                     XFakeKeycode(XK_Up, ControlMask);
+                } else if (strcasestr(name, "yelp") == name) {
+                    XFakeKeycode(XK_Tab, ShiftMask);
                 } else if (strcasestr(name, "pidgin") == name) {
                     XFakeKeycode(XK_Page_Up, 0);
                 } else if (strcasestr(name, "rhythmbox") == name) { // Volume Up
@@ -654,8 +711,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 } else if (strcasestr(name, "nautilus") == name) {
                     XFakeKeycode(XK_Up, 0);
                 } else {
-                    XFakeKeycode(XF86XK_AudioRaiseVolume, 0);
-                    if (verbose) fprintf(stderr, "No up-key for application %s. (Sending volume up to X)\n", name);
+                    if (verbose) fprintf(stderr, "No up-key for application %s.\n", name);
                 }
             }
 
@@ -664,6 +720,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Tab, 0);
                 } else if (strcasestr(name, "opera") == name) {
                     XFakeKeycode(XK_Down, ControlMask);
+                } else if (strcasestr(name, "yelp") == name) {
+                    XFakeKeycode(XK_Tab, 0);
                 } else if (strcasestr(name, "pidgin") == name) {
                     XFakeKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "rhythmbox") == name) {
@@ -688,8 +746,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 } else if (strcasestr(name, "nautilus") == name) {
                     XFakeKeycode(XK_Down, 0);
                 } else {
-                    XFakeKeycode(XF86XK_AudioLowerVolume, 0);
-                    if (verbose) fprintf(stderr, "No down-key support for application %s. (Sending volume down to X)\n", name);
+                    if (verbose) fprintf(stderr, "No down-key support for application %s.\n", name);
                 }
             }
 
@@ -698,6 +755,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Page_Down, ControlMask);
                 } else if (strcasestr(name, "opera") == name) {
                     XFakeKeycode(XK_F6, ControlMask);
+                } else if (strcasestr(name, "yelp") == name) {
+                    XFakeKeycode(XK_Right, Mod1Mask);
                 } else if (strcasestr(name, "pidgin") == name) {
                     XFakeKeycode(XK_Tab, ControlMask);
                 } else if (strcasestr(name, "evince") == name) {        // Next Slide
@@ -728,8 +787,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 } else if (strcasestr(name, "nautilus") == name) {
                     XFakeKeycode(XK_Right, 0);
                 } else {
-                    XFakeKeycode(XF86XK_AudioNext, 0);
-                    if (verbose) fprintf(stderr, "No right-key support for application %s. (Sending play next to X)\n", name);
+                    if (verbose) fprintf(stderr, "No right-key support for application %s.\n", name);
                 }
             }
 
@@ -738,6 +796,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Page_Up, ControlMask);
                 } else if (strcasestr(name, "opera") == name) {
                     XFakeKeycode(XK_F6, ControlMask | ShiftMask);
+                } else if (strcasestr(name, "yelp") == name) {
+                    XFakeKeycode(XK_Left, Mod1Mask);
                 } else if (strcasestr(name, "pidgin") == name) {
                     XFakeKeycode(XK_Tab, ControlMask | ShiftMask);
                 } else if (strcasestr(name, "evince") == name) {        // Previous Slide
@@ -768,14 +828,14 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 } else if (strcasestr(name, "nautilus") == name) {
                     XFakeKeycode(XK_Left, 0);
                 } else {
-                    XFakeKeycode(XF86XK_AudioPrev, 0);
-                    if (verbose) fprintf(stderr, "No left-key support for application %s. (Sending play previous to X)\n", name);
+                    if (verbose) fprintf(stderr, "No left-key support for application %s.\n", name);
                 }
             }
 
-            // Save the keys state for next run
-            keys = wmote.keys.bits;
         }
+
+        // Save the keys state for next run
+        keys = wmote.keys.bits;
     }
     XCloseDisplay(display);
 

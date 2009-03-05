@@ -18,7 +18,7 @@
 - 2: blank screen/mute audio
 - A: Play/Pause
 - B: enable mouse pointer
-- home: exit
+- home: back/home
 - exit: unavailable
 
 == Bugs
@@ -26,5 +26,4 @@
   - vlc when going into fullscreen
 - Applications loosing focus
   - qiv in fullscreen
-- Mouse buttons do not work (yet)
 - Battery status updates do not seem to work ?

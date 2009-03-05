@@ -6,7 +6,7 @@
 
 Summary: Giving presentations with your Wiimote (or control applications with the Wiimote)
 Name: wiipresent
-Version: 0.6
+Version: 0.7
 Release: 1
 License: GPL
 Group: Applications/Productivity
