@@ -637,6 +637,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_space, 0);
                 } else if (strcasestr(name, "tvtime") == name) {    // Change screen ratio
                     XFakeKeycode(XK_a, 0);
+                } else if (strcasestr(name, "totem") == name) {
+                    XFakeKeycode(XK_a, 0);
                 } else if (strcasestr(name, "qiv") == name) {       // Maximize
                     XFakeKeycode(XK_m, 0);
                 } else if (strcasestr(name, "nautilus") == name) {
@@ -673,6 +675,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 } else if (strcasestr(name, "rhythmbox") == name) {
                     XFakeKeycode(XK_F11, 0);
                 } else if (strcasestr(name, "tvtime") == name) {
+                    XFakeKeycode(XK_f, 0);
+                } else if (strcasestr(name, "totem") == name) {
                     XFakeKeycode(XK_f, 0);
                 } else if (strcasestr(name, "mplayer") == name) {
                     XFakeKeycode(XK_f, 0);
@@ -721,6 +725,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 //                    XFakeKeycode(XK_Up, ControlMask);
                 } else if (strcasestr(name, "tvtime") == name) {
                     XFakeKeycode(XK_KP_Add, 0);
+                } else if (strcasestr(name, "totem") == name) {
+                    XFakeKeycode(XK_Up, 0);
                 } else if (strcasestr(name, "vlc") == name) {
                     XFakeKeycode(XK_Up, ControlMask);
                 } else if (strcasestr(name, "xine") == name) {
@@ -755,6 +761,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 //                    XFakeKeycode(XK_Down, ControlMask);
                 } else if (strcasestr(name, "tvtime") == name) {
                     XFakeKeycode(XK_KP_Subtract, 0);
+                } else if (strcasestr(name, "totem") == name) {
+                    XFakeKeycode(XK_Down, 0);
                 } else if (strcasestr(name, "vlc") == name) {
                     XFakeKeycode(XK_Down, ControlMask);
                 } else if (strcasestr(name, "xine") == name) {
@@ -804,6 +812,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Right, Mod1Mask);
                 } else if (strcasestr(name, "tvtime") == name) {        // Next Channel
                     XFakeKeycode(XK_Up, 0);
+                } else if (strcasestr(name, "totem") == name) {
+                    XFakeKeycode(XK_Right, 0);
                 } else if (strcasestr(name, "vlc") == name) {           // Skip Forward
                     XFakeKeycode(XK_Right, Mod1Mask);
                 } else if (strcasestr(name, "mplayer") == name) {
@@ -845,6 +855,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Left, Mod1Mask);
                 } else if (strcasestr(name, "tvtime") == name) {       // Previous Channel
                     XFakeKeycode(XK_Down, 0);
+                } else if (strcasestr(name, "totem") == name) {
+                    XFakeKeycode(XK_Left, 0);
                 } else if (strcasestr(name, "vlc") == name) {          // Skip Backward
                     XFakeKeycode(XK_Left, Mod1Mask);
                 } else if (strcasestr(name, "mplayer") == name) {

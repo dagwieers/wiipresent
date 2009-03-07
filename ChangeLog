@@ -1,4 +1,5 @@
-* 0.7svn - release ??/??/2009
+* 0.7svn - release 07/03/2009
+- Added support for totem
 
 * 0.7 - release 05/03/2009
 - Up/Down keys loop through links instead of scrolling in Firefox/Opera
