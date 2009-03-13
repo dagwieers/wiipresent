@@ -4,12 +4,15 @@
 - Rumble/flash lights when battery low
 - Make sound when presentation is over
 - Record timings and print timestamp + keypress
-- Follow keypresses so we know on what slide we are too
+  (follow keypresses so we know on what slide we are too)
 - Make the mouse pointer move based on IR data
 - Implement the power button to disconnect the device cleanly
   (this is a bug in libwiimote)
 - Use playertoggle to switch between skip forward and next playback
 - On disconnect, wait for reconnect
+- Scan for wiimotes and pick the closest nearby if more than one
+- Implement better mouse-mode that does not need B-button pressed
+  (both A+B could enable en disable mouse-mode, with leds indicating)
 
 == OpenOffice keymaps
 - left/right: change slide/channel/tab
