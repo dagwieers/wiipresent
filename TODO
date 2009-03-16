@@ -14,17 +14,6 @@
 - Implement better mouse-mode that does not need B-button pressed
   (both A+B could enable en disable mouse-mode, with leds indicating)
 
-== OpenOffice keymaps
-- left/right: change slide/channel/tab
-- up/down: change volume
-- -/+: change workspace
-- 1: fullscreen
-- 2: blank screen/mute audio
-- A: Play/Pause
-- B: enable mouse pointer
-- home: back/home
-- exit: unavailable
-
 == Bugs
 - Known bug where some applications are causing a BadWindow error
   - vlc when going into fullscreen

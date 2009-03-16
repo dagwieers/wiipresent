@@ -1,14 +1,14 @@
 /*
 This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU Library General Public License as published by
+it under the terms of the GNU General Public License as published by
 the Free Software Foundation; version 2 only
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Library General Public License for more details.
+GNU General Public License for more details.
 
-You should have received a copy of the GNU Library General Public License
+You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 Copyright 2009 Dag Wieers <dag@wieers.com>
@@ -19,8 +19,8 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #define _GNU_SOURCE
 
 #include <getopt.h>
-#include <math.h>
 #include <libgen.h>
+#include <math.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,7 +38,7 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #include "wiimote_api.h"
 
 static char NAME[] = "wiipresent";
-static char VERSION[] = "0.7svn";
+static char VERSION[] = "0.7.1";
 
 static char *displayname = NULL;
 static Display *display = NULL;
@@ -354,6 +354,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     int leftmousebutton = False;
     int rightmousebutton = False;
 
+    int mousemode = False;
+
     int ret;
 
     char *name;
@@ -430,18 +432,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 //        printf("%f - %f - %f - %ld - %ld - %ld - %d\n", ((float) duration * 5.0 / (float) length), (float) duration, (float) length, start, now, duration, phase);
 
         // Inside the mouse functionality
-        if (wmote.keys.b) {
-            if (! mouse) {
-                if (tilt) {
-                    if (verbose >= 3) fprintf(stderr, "Tilt sensors enabled. Mouse enabled.\n");
-                    wmote.mode.acc = 1;
-                } else if (infrared) {
-                    if (verbose >= 3) fprintf(stderr, "Infrared camera enabled. Mouse enabled.\n");
-                    wmote.mode.ir = 1;
-                }
-
-                mouse = ! mouse;
-            }
+        if (mousemode) {
 
             // Tilt method
             if (tilt) {
@@ -450,64 +441,41 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             // Infrared method
             } else if (infrared) {
 
-/*                if (!valid_point(point1) || (point1 == point2)) {
-                    point1 = search_newpoint(&wmote, point2);
-                } else {
-                    fprintf(stderr, "Point 1 is valid %4d %4d %2d\n", point1->x, point1->y, point1->size);
-                }
-
-                if (!valid_point(point2) || (point1 == point2)) {
-                    point2 = search_newpoint(&wmote, point1);
-                } else {
-                    fprintf(stderr, "Point 2 is valid %4d %4d %2d\n", point2->x, point2->y, point2->size);
-                }
-
-                if (valid_point(point1) && ! valid_point(point2))
-                    XMovePointer(display, 1280 * (prev1x - point1->x) / 1791,
-                                         -800 * (prev1y - point1->y) / 1791, 1);
-                else if (valid_point(point1) && ! valid_point(point2))
-                    XMovePointer(display, 1280 * (prev2x - point2->x) / 1791,
-                                         -800 * (prev2y - point2->y) / 1791, 1);
-                else if (point1 == point2)
-                    XMovePointer(display, 1280 * (prev1x - point1->x) / 1791,
-                                         -800 * (prev1y - point1->y) / 1791, 1);
-                else
-                    XMovePointer(display, 1280 * (prev1x - point1->x > prev2x - point2->x ? prev2x - point2->x : prev1x - point1->x) / 1791,
-                                         -800 * (prev1y - point1->y > prev2y - point2->y ? prev2y - point2->y : prev1y - point1->y) / 1791, 1);
-*/
-/*
-                prev1x = point1->x;
-                prev1y = point1->y;
-                prev2x = point2->x;
-                prev2y = point2->y;
-
-                dots = (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? 1 : 0) +
-                       (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? 1 : 0) +
-                       (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? 1 : 0) +
-                       (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? 1 : 0);
-                if (dots > 0) {
-                    x = ( (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? wmote.ir1.x : 0) +
-                          (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.x : 0) +
-                          (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.x : 0) +
-                          (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.x : 0) ) / dots;
-                    y = ( (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? wmote.ir1.y : 0) +
-                          (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.y : 0) +
-                          (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.y : 0) +
-                          (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.y : 0) ) / dots;
-                    XMovePointer(display, 1280 * (1791 - x) / 1791, 800 * y / 1791, 0);
-                } else {
-                    x = 0;
-                    y = 0;
-                }
-*/
                 if (verbose >= 2) fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
             }
+        }
 
-            // Block repeating keys
-            if (keys == wmote.keys.bits) {
-                continue;
+        // Block repeating keys
+        if (keys == wmote.keys.bits) {
+            continue;
+        }
+
+        if (wmote.keys.bits == (WIIMOTE_KEY_A | WIIMOTE_KEY_B)) {
+            mousemode = ! mousemode;
+            if (mousemode) {
+                if (tilt) {
+                    if (verbose >= 1) fprintf(stderr, "Entering mouse-mode. Tilt sensors enabled.\n");
+                    wmote.mode.acc = 1;
+                } else if (infrared) {
+                    if (verbose >= 1) fprintf(stderr, "Entering mouse-mode. Infrared camera enabled.\n");
+                    wmote.mode.ir = 1;
+                }
+            } else {
+                if (tilt) {
+                    if (verbose >= 1) fprintf(stderr, "Leaving mouse-mode. Tilt sensors disabled.\n");
+                    wmote.mode.acc = 0;
+                } else if (infrared) {
+                    if (verbose >= 1) fprintf(stderr, "Leaving mouse-mode. Infrared camera disabled.\n");
+                    wmote.mode.ir = 0;
+                }
             }
 
+            // Save the keys state for next run
+            keys = wmote.keys.bits;
+            continue;
+        }
+
+        if (mousemode) {
             // Left mouse button events
             if (wmote.keys.minus || wmote.keys.a) {
                 if (! leftmousebutton) {
@@ -553,23 +521,18 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Page_Down, 0);
                 }
             }
+
+            // FIXME: We have to keep Alt pressed if we want to browse between apps
+            if (wmote.keys.left) {
+                XFakeKeycode(XK_Tab, Mod1Mask | ShiftMask);
+            }
+
+            if (wmote.keys.right) {
+                XFakeKeycode(XK_Tab, Mod1Mask);
+            }
+
+        // Outside the mouse functionality
         } else {
-            if (mouse) {
-                if (tilt) {
-                    if (verbose >= 4) fprintf(stderr, "Tilt sensors disabled. Mouse disabled.\n");
-                    wmote.mode.acc = 0;
-                } else if (infrared) {
-                    if (verbose >= 4) fprintf(stderr, "Infrared camera disabled. Mouse disabled.\n");
-                    wmote.mode.ir = 0;
-                }
-                mouse = ! mouse;
-            }
-
-
-            // Block repeating keys
-            if (keys == wmote.keys.bits) {
-                continue;
-            }
 
             // Goto to previous workspace
             if (wmote.keys.plus) {

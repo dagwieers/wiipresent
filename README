@@ -15,3 +15,21 @@ You need the following libraries in order to build and use WiiPresent:
  - bluez libraries and headers
  - libcwiimote libraries and headers (build with -D_NO_BLOCKING_UPDATE)
 
+
+== Keymaps
+- A+B: Enter mouse-mode
+- left/right: change slide/channel/tab
+- up/down: change volume
+- -/+: change workspace
+- 1: fullscreen
+- 2: blank screen/mute audio
+- A: Play/Pause
+- home: back/home
+- exit: unavailable
+
+== Keymaps in mouse-mode
+- A+B: Leave mouse-mode
+- left/right: switch between applications
+- up/down: scroll up/down
+- -/+: left and right mouse-buttons
+- A: left mouse-button

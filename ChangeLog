@@ -1,5 +1,6 @@
-* 0.7svn - release 07/03/2009
+* 0.7.1 - release 16/03/2009
 - Added support for totem
+- Pressing A+B at the same time will enable/disable mouse-mode
 
 * 0.7 - release 05/03/2009
 - Up/Down keys loop through links instead of scrolling in Firefox/Opera
