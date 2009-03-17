@@ -11,6 +11,7 @@
 - Use playertoggle to switch between skip forward and next playback
 - On disconnect, wait for reconnect
 - Scan for wiimotes and pick the closest nearby if more than one
+- Implement on-screen writing as replacement for laser
 
 == Bugs
 - Known bug where some applications are causing a BadWindow error
