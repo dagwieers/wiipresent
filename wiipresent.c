@@ -350,13 +350,10 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     int playertoggle = False;
     int fullscreentoggle = False;
     int screensavertoggle = False;
-    int mouse = False;
     int leftmousebutton = False;
     int rightmousebutton = False;
 
     int mousemode = False;
-
-    int ret;
 
     char *name;
     XGetInputFocus(display, &window, &revert);
@@ -465,13 +462,12 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 else
                     XMovePointer(display, 1280 * (prev1x - point1->x > prev2x - point2->x ? prev2x - point2->x : prev1x - point1->x) / 1791,
                                          -800 * (prev1y - point1->y > prev2y - point2->y ? prev2y - point2->y : prev1y - point1->y) / 1791, 1);
-*/
-/*
+
                 prev1x = point1->x;
                 prev1y = point1->y;
                 prev2x = point2->x;
                 prev2y = point2->y;
-
+*/
                 dots = (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? 1 : 0) +
                        (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? 1 : 0) +
                        (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? 1 : 0) +
@@ -490,7 +486,6 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     x = 0;
                     y = 0;
                 }
-*/
 
                 if (verbose >= 2) fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
 
