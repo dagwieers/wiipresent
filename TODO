@@ -11,12 +11,13 @@
 - Use playertoggle to switch between skip forward and next playback
 - On disconnect, wait for reconnect
 - Scan for wiimotes and pick the closest nearby if more than one
-- Implement better mouse-mode that does not need B-button pressed
-  (both A+B could enable en disable mouse-mode, with leds indicating)
 
 == Bugs
 - Known bug where some applications are causing a BadWindow error
   - vlc when going into fullscreen
 - Applications loosing focus
-  - qiv in fullscreen
+  - qiv in fullscreenA
+
+== Bugs in libwiimote
 - Battery status updates do not seem to work ?
+- Infrared only works when we acceleration sensors are enabled

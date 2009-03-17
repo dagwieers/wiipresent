@@ -440,8 +440,60 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             // Infrared method
             } else if (infrared) {
+/*
+                if (!valid_point(point1) || (point1 == point2)) {
+                    point1 = search_newpoint(&wmote, point2);
+                } else {
+                    fprintf(stderr, "Point 1 is valid %4d %4d %2d\n", point1->x, point1->y, point1->size);
+                }
+ 
+                if (!valid_point(point2) || (point1 == point2)) {
+                    point2 = search_newpoint(&wmote, point1);
+                } else {
+                    fprintf(stderr, "Point 2 is valid %4d %4d %2d\n", point2->x, point2->y, point2->size);
+                }
+
+                if (valid_point(point1) && ! valid_point(point2))
+                    XMovePointer(display, 1280 * (prev1x - point1->x) / 1791,
+                                         -800 * (prev1y - point1->y) / 1791, 1);
+                else if (valid_point(point1) && ! valid_point(point2))
+                    XMovePointer(display, 1280 * (prev2x - point2->x) / 1791,
+                                         -800 * (prev2y - point2->y) / 1791, 1);
+                else if (point1 == point2)
+                    XMovePointer(display, 1280 * (prev1x - point1->x) / 1791,
+                                         -800 * (prev1y - point1->y) / 1791, 1);
+                else
+                    XMovePointer(display, 1280 * (prev1x - point1->x > prev2x - point2->x ? prev2x - point2->x : prev1x - point1->x) / 1791,
+                                         -800 * (prev1y - point1->y > prev2y - point2->y ? prev2y - point2->y : prev1y - point1->y) / 1791, 1);
+*/
+/*
+                prev1x = point1->x;
+                prev1y = point1->y;
+                prev2x = point2->x;
+                prev2y = point2->y;
+
+                dots = (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? 1 : 0) +
+                       (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? 1 : 0) +
+                       (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? 1 : 0) +
+                       (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? 1 : 0);
+                if (dots > 0) {
+                    x = ( (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? wmote.ir1.x : 0) +
+                          (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.x : 0) +
+                          (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.x : 0) +
+                          (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.x : 0) ) / dots;
+                    y = ( (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? wmote.ir1.y : 0) +
+                          (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.y : 0) +
+                          (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.y : 0) +
+                          (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.y : 0) ) / dots;
+                    XMovePointer(display, 1280 * (1791 - x) / 1791, 800 * y / 1791, 0);
+                } else {
+                    x = 0;
+                    y = 0;
+                }
+*/
 
                 if (verbose >= 2) fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
+
             }
         }
 
@@ -450,24 +502,97 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             continue;
         }
 
-        if (wmote.keys.bits == (WIIMOTE_KEY_A | WIIMOTE_KEY_B)) {
-            mousemode = ! mousemode;
-            if (mousemode) {
-                if (tilt) {
-                    if (verbose >= 1) fprintf(stderr, "Entering mouse-mode. Tilt sensors enabled.\n");
+        // WINDOW MODE
+        if (wmote.keys.b) {
+            if (wmote.keys.a) {
+                mousemode = ! mousemode;
+                if (mousemode) {
+                    if (verbose >= 1) fprintf(stderr, "Entering mouse-mode. ");
+                    if (tilt) {
+                        if (verbose >= 1) fprintf(stderr, "Tilt sensors enabled.\n");
+                    } else if (infrared) {
+                        if (verbose >= 1) fprintf(stderr, "Infrared camera enabled.\n");
+                        wmote.mode.ir = 1;
+                    }
+                    // Infrared only works if acceleration sensors are enabled.
                     wmote.mode.acc = 1;
-                } else if (infrared) {
-                    if (verbose >= 1) fprintf(stderr, "Entering mouse-mode. Infrared camera enabled.\n");
-                    wmote.mode.ir = 1;
-                }
-            } else {
-                if (tilt) {
-                    if (verbose >= 1) fprintf(stderr, "Leaving mouse-mode. Tilt sensors disabled.\n");
+                } else {
+                    if (verbose >= 1) fprintf(stderr, "Leaving mouse-mode. ");
+                    if (tilt) {
+                        if (verbose >= 1) fprintf(stderr, "Tilt sensors disabled.\n");
+                    } else if (infrared) {
+                        if (verbose >= 1) fprintf(stderr, "Infrared camera disabled.\n");
+                        wmote.mode.acc = 0;
+                    }
+                    // Infrared only works if acceleration sensors are enabled.
                     wmote.mode.acc = 0;
-                } else if (infrared) {
-                    if (verbose >= 1) fprintf(stderr, "Leaving mouse-mode. Infrared camera disabled.\n");
-                    wmote.mode.ir = 0;
                 }
+
+            }
+
+            if (wmote.keys.up) {
+                if (strcasestr(name, "firefox") == name) {          // Scroll Up
+                    XFakeKeycode(XK_Page_Up, 0);
+                } else if (strcasestr(name, "opera") == name) {
+                    XFakeKeycode(XK_Page_Up, 0);
+                }
+            }
+ 
+            if (wmote.keys.down) {
+                if (strcasestr(name, "firefox") == name) {          // Scroll Up
+                    XFakeKeycode(XK_Page_Down, 0);
+                } else if (strcasestr(name, "opera") == name) {
+                    XFakeKeycode(XK_Page_Down, 0);
+                }
+            }
+
+            // Page up
+            if (wmote.keys.up) {
+                XFakeKeycode(XK_Page_Up, 0);
+            }
+
+            // Page down
+            if (wmote.keys.down) {
+                XFakeKeycode(XK_Page_Down, 0);
+            }
+
+            // FIXME: We have to keep Alt pressed if we want to browse between apps
+            if (wmote.keys.left) {
+                XFakeKeycode(XK_Tab, Mod1Mask | ShiftMask);
+            }
+
+            if (wmote.keys.right) {
+                XFakeKeycode(XK_Tab, Mod1Mask);
+            }
+
+            // Previous workspace
+            if (wmote.keys.minus) {
+                XFakeKeycode(XK_Left, ControlMask | Mod1Mask);
+            }
+
+            // Next workspace
+            if (wmote.keys.plus) {
+                XFakeKeycode(XK_Right, ControlMask | Mod1Mask);
+            }
+
+            if (wmote.keys.two) {
+                // Mute audio
+                if (strcasestr(name, "mplayer") == name) {
+                    XFakeKeycode(XK_m, 0);
+                } else if (strcasestr(name, "xine") == name) {
+                    XFakeKeycode(XK_m, ControlMask);
+                } else {
+                    XFakeKeycode(XF86XK_AudioMute, 0);
+                }
+
+                // Blank screen
+                if (screensavertoggle) {
+                    XForceScreenSaver(display, ScreenSaverReset);
+                } else {
+                    XActivateScreenSaver(display);
+                }
+
+                screensavertoggle = ! screensavertoggle;
             }
 
             // Save the keys state for next run
@@ -475,6 +600,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             continue;
         }
 
+        // MOUSE MODE
         if (mousemode) {
             // Left mouse button events
             if (wmote.keys.minus || wmote.keys.a) {
@@ -506,43 +632,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 }
             }
 
-            if (wmote.keys.up) {
-                if (strcasestr(name, "firefox") == name) {          // Scroll Up
-                    XFakeKeycode(XK_Page_Up, 0);
-                } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_Page_Up, 0);
-                }
-            }
-
-            if (wmote.keys.down) {
-                if (strcasestr(name, "firefox") == name) {          // Scroll Up
-                    XFakeKeycode(XK_Page_Down, 0);
-                } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_Page_Down, 0);
-                }
-            }
-
-            // FIXME: We have to keep Alt pressed if we want to browse between apps
-            if (wmote.keys.left) {
-                XFakeKeycode(XK_Tab, Mod1Mask | ShiftMask);
-            }
-
-            if (wmote.keys.right) {
-                XFakeKeycode(XK_Tab, Mod1Mask);
-            }
-
-        // Outside the mouse functionality
+        // APPLICATION MODE
         } else {
-
-            // Goto to previous workspace
-            if (wmote.keys.plus) {
-                XFakeKeycode(XK_Right, ControlMask | Mod1Mask);
-            }
-
-            // Goto to next workspace
-            if (wmote.keys.minus) {
-                XFakeKeycode(XK_Left, ControlMask | Mod1Mask);
-            }
 
             // Go home/back
             if (wmote.keys.home) {
@@ -654,24 +745,11 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             }
 
             if (wmote.keys.two) {
-
-                // Mute audio
-                if (strcasestr(name, "mplayer") == name) {
-                    XFakeKeycode(XK_m, 0);
-                } else if (strcasestr(name, "xine") == name) {
-                    XFakeKeycode(XK_m, ControlMask);
+                if (strcasestr(name, "tvtime") == name) {
+                    XFakeKeycode(XK_i, 0);
                 } else {
-                    XFakeKeycode(XF86XK_AudioMute, 0);
+                    if (verbose) fprintf(stderr, "No two-key support for application %s.\n", name);
                 }
-
-                // Blank screen
-                if (screensavertoggle) {
-                    XForceScreenSaver(display, ScreenSaverReset);
-                } else {
-                    XActivateScreenSaver(display);
-                }
-
-                screensavertoggle = ! screensavertoggle;
             }
 
             if (wmote.keys.up) {
@@ -683,6 +761,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Tab, ShiftMask);
                 } else if (strcasestr(name, "pidgin") == name) {
                     XFakeKeycode(XK_Page_Up, 0);
+                } else if (strcasestr(name, "openoffice") == name ||
+                           strcasestr(name, "soffice") == name) {
+                    XFakeKeycode(XK_Page_Up, Mod1Mask);
                 } else if (strcasestr(name, "rhythmbox") == name) { // Volume Up
                     XFakeKeycode(XF86XK_AudioRaiseVolume, 0);
 //                    XFakeKeycode(XK_Up, ControlMask);
@@ -719,6 +800,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Tab, 0);
                 } else if (strcasestr(name, "pidgin") == name) {
                     XFakeKeycode(XK_Page_Down, 0);
+                } else if (strcasestr(name, "openoffice") == name ||
+                           strcasestr(name, "soffice") == name) {
+                    XFakeKeycode(XK_Page_Down, Mod1Mask);
                 } else if (strcasestr(name, "rhythmbox") == name) {
                     XFakeKeycode(XF86XK_AudioLowerVolume, 0);       // Volume Down
 //                    XFakeKeycode(XK_Down, ControlMask);
@@ -830,6 +914,50 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     XFakeKeycode(XK_Left, 0);
                 } else {
                     if (verbose) fprintf(stderr, "No left-key support for application %s.\n", name);
+                }
+            }
+
+            if (wmote.keys.minus) {
+                if (strcasestr(name, "firefox") == name) {              // Zoom Out
+                    XFakeKeycode(XK_minus, ControlMask);
+                } else if (strcasestr(name, "opera") == name) {
+                    XFakeKeycode(XK_minus, 0);
+                } else if (strcasestr(name, "xterm") == name) {
+                    XFakeKeycode(XK_KP_Subtract, ShiftMask);
+                } else if (strcasestr(name, "tvtime") == name) {
+                    XFakeKeycode(XK_KP_Subtract, 0);                    // Volume Down
+                } else if (strcasestr(name, "totem") == name) {
+                    XFakeKeycode(XK_Down, 0);
+                } else if (strcasestr(name, "vlc") == name) {
+                    XFakeKeycode(XK_Down, ControlMask);
+                } else if (strcasestr(name, "xine") == name) {
+                    XFakeKeycode(XK_v, 0);
+                } else if (strcasestr(name, "mplayer") == name) {
+                    XFakeKeycode(XK_9, ShiftMask);
+                } else {
+                    XFakeKeycode(XF86XK_AudioLowerVolume, 0);
+                }
+            }
+
+            if (wmote.keys.plus) {
+                if (strcasestr(name, "firefox") == name) {              // Zoom In
+                    XFakeKeycode(XK_plus, ControlMask);
+                } else if (strcasestr(name, "opera") == name) {
+                    XFakeKeycode(XK_plus, 0);
+                } else if (strcasestr(name, "xterm") == name) {
+                    XFakeKeycode(XK_KP_Add, ShiftMask);
+                } else if (strcasestr(name, "tvtime") == name) {
+                    XFakeKeycode(XK_KP_Add, 0);                         // Volume Up
+                } else if (strcasestr(name, "totem") == name) {
+                    XFakeKeycode(XK_Up, 0); 
+                } else if (strcasestr(name, "vlc") == name) {
+                    XFakeKeycode(XK_Up, ControlMask);
+                } else if (strcasestr(name, "xine") == name) {
+                    XFakeKeycode(XK_V, ShiftMask);
+                } else if (strcasestr(name, "mplayer") == name) {
+                    XFakeKeycode(XK_0, ShiftMask);
+                } else {
+                    XFakeKeycode(XF86XK_AudioRaiseVolume, 0);
                 }
             }
 
