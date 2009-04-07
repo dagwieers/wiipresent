@@ -53,7 +53,7 @@ int interval_return = 0;
 int prefer_blanking_return = 0;
 int allow_exposures_return = 0;
 
-static void XFakeKeycode(int keycode, int modifiers){
+static void XFakeKeypress(int keycode, int modifiers) {
     if ( modifiers & ControlMask )
         XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Control_L), True, 0);
 
@@ -69,7 +69,9 @@ static void XFakeKeycode(int keycode, int modifiers){
     XTestFakeKeyEvent(display, XKeysymToKeycode(display, keycode), True, 0);
 
     XSync(display, False);
+}
 
+static void XFakeKeyrelease(int keycode, int modifiers) {
     XTestFakeKeyEvent(display, XKeysymToKeycode(display, keycode), False, 0);
 
     if ( modifiers & ShiftMask )
@@ -83,6 +85,13 @@ static void XFakeKeycode(int keycode, int modifiers){
 
     if ( modifiers & ControlMask )
         XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Control_L), False, 0);
+
+    XSync(display, False);
+}
+
+static void XFakeKeycode(int keycode, int modifiers) {
+    XFakeKeypress(keycode, modifiers);
+    XFakeKeyrelease(keycode, modifiers);
 }
 
 void XMovePointer(Display *display, int xpos, int ypos, int relative) {
@@ -210,8 +219,9 @@ int main(int argc, char **argv) {
 
     int c;
 
-    // Make stdout unbuffered
+    // Make stdout and stderr unbuffered
     setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
 
     while (1) {
         int option_index = 0;
@@ -499,6 +509,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
         // WINDOW MODE
         if (wmote.keys.b) {
+
             if (wmote.keys.a) {
                 mousemode = ! mousemode;
                 if (mousemode) {
@@ -539,16 +550,6 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 } else if (strcasestr(name, "opera") == name) {
                     XFakeKeycode(XK_Page_Down, 0);
                 }
-            }
-
-            // Page up
-            if (wmote.keys.up) {
-                XFakeKeycode(XK_Page_Up, 0);
-            }
-
-            // Page down
-            if (wmote.keys.down) {
-                XFakeKeycode(XK_Page_Down, 0);
             }
 
             // FIXME: We have to keep Alt pressed if we want to browse between apps
