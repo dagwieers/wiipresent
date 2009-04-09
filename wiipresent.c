@@ -19,7 +19,6 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #define _GNU_SOURCE
 
 #include <getopt.h>
-#include <libgen.h>
 #include <math.h>
 #include <signal.h>
 #include <stdio.h>
@@ -29,11 +28,9 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #include <unistd.h>
 
 #include <X11/Xatom.h>
-#include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XTest.h>
 #include <X11/XF86keysym.h>
-#include <X11/keysym.h>
 
 #include "wiimote_api.h"
 
@@ -53,7 +50,7 @@ int interval_return = 0;
 int prefer_blanking_return = 0;
 int allow_exposures_return = 0;
 
-static void XFakeKeypress(int keycode, int modifiers) {
+static void XKeyPress(int keycode, int modifiers) {
     if ( modifiers & ControlMask )
         XTestFakeKeyEvent(display, XKeysymToKeycode(display, XK_Control_L), True, 0);
 
@@ -71,7 +68,7 @@ static void XFakeKeypress(int keycode, int modifiers) {
     XSync(display, False);
 }
 
-static void XFakeKeyrelease(int keycode, int modifiers) {
+static void XKeyRelease(int keycode, int modifiers) {
     XTestFakeKeyEvent(display, XKeysymToKeycode(display, keycode), False, 0);
 
     if ( modifiers & ShiftMask )
@@ -89,9 +86,9 @@ static void XFakeKeyrelease(int keycode, int modifiers) {
     XSync(display, False);
 }
 
-static void XFakeKeycode(int keycode, int modifiers) {
-    XFakeKeypress(keycode, modifiers);
-    XFakeKeyrelease(keycode, modifiers);
+static void XKeycode(int keycode, int modifiers) {
+    XKeyPress(keycode, modifiers);
+    XKeyRelease(keycode, modifiers);
 }
 
 void XMovePointer(Display *display, int xpos, int ypos, int relative) {
@@ -183,33 +180,6 @@ void rumble(wiimote_t *wmote, int msecs) {
     wmote->rumble = 0;
 }
 
-// Is this a valid point ?
-int valid_point(wiimote_ir_t *point) {
-    if (point == NULL)
-        return 0;
-    if (point->size == 0 || point->size == 15 || point->x == 0 || point->x == 1791 || point->y == 0 || point->y == 1791)
-        return 0;
-    return 1;
-}
-
-// This function returns the largest point not already discovered
-wiimote_ir_t *search_newpoint(wiimote_t *wmote, wiimote_ir_t *other) {
-    wiimote_ir_t *new = &wmote->ir1;
-    wiimote_ir_t *maybe = &wmote->ir2;
-    if (valid_point(maybe) && maybe != other && maybe->size < new->size) {
-        new = maybe;
-    }
-    maybe = &wmote->ir3;
-    if (valid_point(maybe) && maybe != other && maybe->size < new->size) {
-        new = maybe;
-    }
-    maybe = &wmote->ir4;
-    if (valid_point(maybe) && maybe != other && maybe->size < new->size) {
-        new = maybe;
-    }
-    return new;
-}
-
 int main(int argc, char **argv) {
     int length = 0;
     char *btaddress = NULL;
@@ -219,7 +189,7 @@ int main(int argc, char **argv) {
 
     int c;
 
-    // Make stdout and stderr unbuffered
+    // Make stdout unbuffered
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
@@ -349,12 +319,6 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     int phase = 0, oldphase = 0;
     uint16_t keys = 0;
 
-    int x = 0, y = 0;
-    int prev1x = 0, prev1y = 0;
-    int prev2x = 0, prev2y = 0;
-    int dots = 0;
-//    wiimote_ir_t *point1 = &wmote.ir1, *point2 = &wmote.ir2;
-
     int oldbattery = 0;
     Window oldwindow = window;
     int playertoggle = False;
@@ -447,57 +411,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             // Infrared method
             } else if (infrared) {
-/*
-                if (!valid_point(point1) || (point1 == point2)) {
-                    point1 = search_newpoint(&wmote, point2);
-                } else {
-                    fprintf(stderr, "Point 1 is valid %4d %4d %2d\n", point1->x, point1->y, point1->size);
-                }
- 
-                if (!valid_point(point2) || (point1 == point2)) {
-                    point2 = search_newpoint(&wmote, point1);
-                } else {
-                    fprintf(stderr, "Point 2 is valid %4d %4d %2d\n", point2->x, point2->y, point2->size);
-                }
 
-                if (valid_point(point1) && ! valid_point(point2))
-                    XMovePointer(display, 1280 * (prev1x - point1->x) / 1791,
-                                         -800 * (prev1y - point1->y) / 1791, 1);
-                else if (valid_point(point1) && ! valid_point(point2))
-                    XMovePointer(display, 1280 * (prev2x - point2->x) / 1791,
-                                         -800 * (prev2y - point2->y) / 1791, 1);
-                else if (point1 == point2)
-                    XMovePointer(display, 1280 * (prev1x - point1->x) / 1791,
-                                         -800 * (prev1y - point1->y) / 1791, 1);
-                else
-                    XMovePointer(display, 1280 * (prev1x - point1->x > prev2x - point2->x ? prev2x - point2->x : prev1x - point1->x) / 1791,
-                                         -800 * (prev1y - point1->y > prev2y - point2->y ? prev2y - point2->y : prev1y - point1->y) / 1791, 1);
-
-                prev1x = point1->x;
-                prev1y = point1->y;
-                prev2x = point2->x;
-                prev2y = point2->y;
-*/
-                dots = (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? 1 : 0) +
-                       (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? 1 : 0) +
-                       (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? 1 : 0) +
-                       (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? 1 : 0);
-                if (dots > 0) {
-                    x = ( (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? wmote.ir1.x : 0) +
-                          (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.x : 0) +
-                          (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.x : 0) +
-                          (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.x : 0) ) / dots;
-                    y = ( (wmote.ir1.x !=0 && wmote.ir1.x != 1791 ? wmote.ir1.y : 0) +
-                          (wmote.ir2.x !=0 && wmote.ir2.x != 1791 ? wmote.ir2.y : 0) +
-                          (wmote.ir3.x !=0 && wmote.ir3.x != 1791 ? wmote.ir3.y : 0) +
-                          (wmote.ir4.x !=0 && wmote.ir4.x != 1791 ? wmote.ir4.y : 0) ) / dots;
-                    XMovePointer(display, 1280 * (1791 - x) / 1791, 800 * y / 1791, 0);
-                } else {
-                    x = 0;
-                    y = 0;
-                }
-
-                if (verbose >= 2) fprintf(stderr, "%d: ( %4d , %4d ) - [ %4d, %4d, %4d, %4d ] [ %4d, %4d, %4d, %4d ] [%2d, %2d, %2d, %2d ]\n", dots, x, y, wmote.ir1.x, wmote.ir2.x,wmote.ir3.x, wmote.ir4.x, wmote.ir1.y, wmote.ir2.y, wmote.ir3.y, wmote.ir4.y, wmote.ir1.size, wmote.ir2.size, wmote.ir3.size, wmote.ir4.size);
+//                XMovePointer(display, (int) absx * width, (int) absy * height, 0);
 
             }
         }
@@ -509,7 +424,6 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
         // WINDOW MODE
         if (wmote.keys.b) {
-
             if (wmote.keys.a) {
                 mousemode = ! mousemode;
                 if (mousemode) {
@@ -538,47 +452,47 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             if (wmote.keys.up) {
                 if (strcasestr(name, "firefox") == name) {          // Scroll Up
-                    XFakeKeycode(XK_Page_Up, 0);
+                    XKeycode(XK_Page_Up, 0);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_Page_Up, 0);
+                    XKeycode(XK_Page_Up, 0);
                 }
             }
  
             if (wmote.keys.down) {
                 if (strcasestr(name, "firefox") == name) {          // Scroll Up
-                    XFakeKeycode(XK_Page_Down, 0);
+                    XKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_Page_Down, 0);
+                    XKeycode(XK_Page_Down, 0);
                 }
             }
 
             // FIXME: We have to keep Alt pressed if we want to browse between apps
             if (wmote.keys.left) {
-                XFakeKeycode(XK_Tab, Mod1Mask | ShiftMask);
+                XKeycode(XK_Tab, Mod1Mask | ShiftMask);
             }
 
             if (wmote.keys.right) {
-                XFakeKeycode(XK_Tab, Mod1Mask);
+                XKeycode(XK_Tab, Mod1Mask);
             }
 
             // Previous workspace
             if (wmote.keys.minus) {
-                XFakeKeycode(XK_Left, ControlMask | Mod1Mask);
+                XKeycode(XK_Left, ControlMask | Mod1Mask);
             }
 
             // Next workspace
             if (wmote.keys.plus) {
-                XFakeKeycode(XK_Right, ControlMask | Mod1Mask);
+                XKeycode(XK_Right, ControlMask | Mod1Mask);
             }
 
             if (wmote.keys.two) {
                 // Mute audio
                 if (strcasestr(name, "mplayer") == name) {
-                    XFakeKeycode(XK_m, 0);
+                    XKeycode(XK_m, 0);
                 } else if (strcasestr(name, "xine") == name) {
-                    XFakeKeycode(XK_m, ControlMask);
+                    XKeycode(XK_m, ControlMask);
                 } else {
-                    XFakeKeycode(XF86XK_AudioMute, 0);
+                    XKeycode(XF86XK_AudioMute, 0);
                 }
 
                 // Blank screen
@@ -634,24 +548,24 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             // Go home/back
             if (wmote.keys.home) {
                 if (strcasestr(name, "firefox") == name) {          // Enter
-                    XFakeKeycode(XK_Home, 0);
+                    XKeycode(XK_Home, 0);
                 } else if (strcasestr(name, "yelp") == name) {
-                    XFakeKeycode(XK_Home, 0);
+                    XKeycode(XK_Home, 0);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_Home, 0);
+                    XKeycode(XK_Home, 0);
                 } else if (strcasestr(name, "evince") == name) {
-                    XFakeKeycode(XK_Home, ControlMask);
+                    XKeycode(XK_Home, ControlMask);
                 } else if (strcasestr(name, "eog") == name) {
-                    XFakeKeycode(XK_Home, 0);
+                    XKeycode(XK_Home, 0);
                 } else if (strcasestr(name, "xpdf") == name) {
-                    XFakeKeycode(XK_Home, ControlMask);
+                    XKeycode(XK_Home, ControlMask);
                 } else if (strcasestr(name, "acroread") == name) {
-                    XFakeKeycode(XK_Home, 0);
+                    XKeycode(XK_Home, 0);
                 } else if (strcasestr(name, "nautilus") == name) {
-                    XFakeKeycode(XK_BackSpace, ShiftMask);
+                    XKeycode(XK_BackSpace, ShiftMask);
                 } else if (strcasestr(name, "openoffice") == name ||
                            strcasestr(name, "soffice") == name) {
-                    XFakeKeycode(XK_Home, 0);
+                    XKeycode(XK_Home, 0);
                 } else {
                     if (verbose) fprintf(stderr, "No home-key support for application %s.\n", name);
                 }
@@ -659,40 +573,40 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             if (wmote.keys.a) {
                 if (strcasestr(name, "firefox") == name) {          // Enter
-                    XFakeKeycode(XK_Return, 0);
+                    XKeycode(XK_Return, 0);
                 } else if (strcasestr(name, "yelp") == name) {
-                    XFakeKeycode(XK_Return, 0);
+                    XKeycode(XK_Return, 0);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_Return, 0);
+                    XKeycode(XK_Return, 0);
                 } else if (strcasestr(name, "evince") == name) {        // Next Slide
-                    XFakeKeycode(XK_Page_Down, 0);
+                    XKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "openoffice") == name ||
                            strcasestr(name, "soffice") == name) {
-                    XFakeKeycode(XK_Page_Down, 0);
+                    XKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "gqview") == name) {
-                    XFakeKeycode(XK_Page_Down, 0);
+                    XKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "qiv") == name) {
-                    XFakeKeycode(XK_space, 0);
+                    XKeycode(XK_space, 0);
                 } else if (strcasestr(name, "eog") == name) {
-                    XFakeKeycode(XK_Right, 0);
+                    XKeycode(XK_Right, 0);
                 } else if (strcasestr(name, "xpdf") == name) {
-                    XFakeKeycode(XK_n, 0);
+                    XKeycode(XK_n, 0);
                 } else if (strcasestr(name, "acroread") == name) {
-                    XFakeKeycode(XK_Page_Down, 0);
+                    XKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "rhythmbox") == name) { // Play/Pause
-                    XFakeKeycode(XK_space, ControlMask); 
+                    XKeycode(XK_space, ControlMask); 
                 } else if (strcasestr(name, "mplayer") == name) {
-                    XFakeKeycode(XK_p, 0);
+                    XKeycode(XK_p, 0);
                 } else if (strcasestr(name, "xine") == name) {
-                    XFakeKeycode(XK_space, 0);
+                    XKeycode(XK_space, 0);
                 } else if (strcasestr(name, "tvtime") == name) {    // Change screen ratio
-                    XFakeKeycode(XK_a, 0);
+                    XKeycode(XK_a, 0);
                 } else if (strcasestr(name, "totem") == name) {
-                    XFakeKeycode(XK_a, 0);
+                    XKeycode(XK_a, 0);
                 } else if (strcasestr(name, "qiv") == name) {       // Maximize
-                    XFakeKeycode(XK_m, 0);
+                    XKeycode(XK_m, 0);
                 } else if (strcasestr(name, "nautilus") == name) {
-                    XFakeKeycode(XK_Return, ShiftMask);
+                    XKeycode(XK_Return, ShiftMask);
                 } else {
                     if (verbose) fprintf(stderr, "No A-key support for application %s.\n", name);
                 }
@@ -701,39 +615,39 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             if (wmote.keys.one) {
                 if (strcasestr(name, "firefox") == name) {          // Fullscreen
-                    XFakeKeycode(XK_F11, 0);
+                    XKeycode(XK_F11, 0);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_F11, 0);
+                    XKeycode(XK_F11, 0);
                 } else if (strcasestr(name, "evince") == name) {
-                    XFakeKeycode(XK_F5, 0);
+                    XKeycode(XK_F5, 0);
                 } else if (strcasestr(name, "openoffice") == name ||
                            strcasestr(name, "soffice") == name) {
                     if (fullscreentoggle)
-                        XFakeKeycode(XK_Escape, 0);
+                        XKeycode(XK_Escape, 0);
                     else
-                        XFakeKeycode(XK_F9, 0);
+                        XKeycode(XK_F9, 0);
                 } else if (strcasestr(name, "gqview") == name) {
-                    XFakeKeycode(XK_F, 0);
+                    XKeycode(XK_F, 0);
                 } else if (strcasestr(name, "qiv") == name) {
-                    XFakeKeycode(XK_f, 0);
+                    XKeycode(XK_f, 0);
                 } else if (strcasestr(name, "eog") == name) {
-                    XFakeKeycode(XK_F11, 0);
+                    XKeycode(XK_F11, 0);
                 } else if (strcasestr(name, "xpdf") == name) {
-                    XFakeKeycode(XK_F, Mod1Mask);
+                    XKeycode(XK_F, Mod1Mask);
                 } else if (strcasestr(name, "acroread") == name) {
-                    XFakeKeycode(XK_L, ControlMask);
+                    XKeycode(XK_L, ControlMask);
                 } else if (strcasestr(name, "rhythmbox") == name) {
-                    XFakeKeycode(XK_F11, 0);
+                    XKeycode(XK_F11, 0);
                 } else if (strcasestr(name, "tvtime") == name) {
-                    XFakeKeycode(XK_f, 0);
+                    XKeycode(XK_f, 0);
                 } else if (strcasestr(name, "totem") == name) {
-                    XFakeKeycode(XK_f, 0);
+                    XKeycode(XK_f, 0);
                 } else if (strcasestr(name, "mplayer") == name) {
-                    XFakeKeycode(XK_f, 0);
+                    XKeycode(XK_f, 0);
                 } else if (strcasestr(name, "vlc") == name) {
-                    XFakeKeycode(XK_f, 0);
+                    XKeycode(XK_f, 0);
                 } else if (strcasestr(name, "xine") == name) {
-                    XFakeKeycode(XK_f, 0);
+                    XKeycode(XK_f, 0);
                 } else {
                     if (verbose) fprintf(stderr, "No one-key support for application %s.\n", name);
                 }
@@ -742,7 +656,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             if (wmote.keys.two) {
                 if (strcasestr(name, "tvtime") == name) {
-                    XFakeKeycode(XK_i, 0);
+                    XKeycode(XK_i, 0);
                 } else {
                     if (verbose) fprintf(stderr, "No two-key support for application %s.\n", name);
                 }
@@ -750,38 +664,38 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             if (wmote.keys.up) {
                 if (strcasestr(name, "firefox") == name) {          // Scroll Up
-                    XFakeKeycode(XK_Tab, ShiftMask);
+                    XKeycode(XK_Tab, ShiftMask);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_Up, ControlMask);
+                    XKeycode(XK_Up, ControlMask);
                 } else if (strcasestr(name, "yelp") == name) {
-                    XFakeKeycode(XK_Tab, ShiftMask);
+                    XKeycode(XK_Tab, ShiftMask);
                 } else if (strcasestr(name, "pidgin") == name) {
-                    XFakeKeycode(XK_Page_Up, 0);
+                    XKeycode(XK_Page_Up, 0);
                 } else if (strcasestr(name, "openoffice") == name ||
                            strcasestr(name, "soffice") == name) {
-                    XFakeKeycode(XK_Page_Up, Mod1Mask);
+                    XKeycode(XK_Page_Up, Mod1Mask);
                 } else if (strcasestr(name, "rhythmbox") == name) { // Volume Up
-                    XFakeKeycode(XF86XK_AudioRaiseVolume, 0);
-//                    XFakeKeycode(XK_Up, ControlMask);
+                    XKeycode(XF86XK_AudioRaiseVolume, 0);
+//                    XKeycode(XK_Up, ControlMask);
                 } else if (strcasestr(name, "tvtime") == name) {
-                    XFakeKeycode(XK_KP_Add, 0);
+                    XKeycode(XK_KP_Add, 0);
                 } else if (strcasestr(name, "totem") == name) {
-                    XFakeKeycode(XK_Up, 0);
+                    XKeycode(XK_Up, 0);
                 } else if (strcasestr(name, "vlc") == name) {
-                    XFakeKeycode(XK_Up, ControlMask);
+                    XKeycode(XK_Up, ControlMask);
                 } else if (strcasestr(name, "xine") == name) {
-                    XFakeKeycode(XK_V, ShiftMask);
+                    XKeycode(XK_V, ShiftMask);
                 } else if (strcasestr(name, "mplayer") == name) {
-                    XFakeKeycode(XK_0, ShiftMask);
+                    XKeycode(XK_0, ShiftMask);
                 // FIXME: This does not work
                 } else if (strcasestr(name, "gqview") == name) {      // Rotate Clockwise
-                    XFakeKeycode(XK_bracketright, 0);
+                    XKeycode(XK_bracketright, 0);
                 } else if (strcasestr(name, "qiv") == name) {
-                    XFakeKeycode(XK_k, 0);
+                    XKeycode(XK_k, 0);
                 } else if (strcasestr(name, "eog") == name) {
-                    XFakeKeycode(XK_r, ControlMask);
+                    XKeycode(XK_r, ControlMask);
                 } else if (strcasestr(name, "nautilus") == name) {
-                    XFakeKeycode(XK_Up, 0);
+                    XKeycode(XK_Up, 0);
                 } else {
                     if (verbose) fprintf(stderr, "No up-key for application %s.\n", name);
                 }
@@ -789,39 +703,39 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             if (wmote.keys.down) {
                 if (strcasestr(name, "firefox") == name) {          // Scroll Down
-                    XFakeKeycode(XK_Tab, 0);
+                    XKeycode(XK_Tab, 0);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_Down, ControlMask);
+                    XKeycode(XK_Down, ControlMask);
                 } else if (strcasestr(name, "yelp") == name) {
-                    XFakeKeycode(XK_Tab, 0);
+                    XKeycode(XK_Tab, 0);
                 } else if (strcasestr(name, "pidgin") == name) {
-                    XFakeKeycode(XK_Page_Down, 0);
+                    XKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "openoffice") == name ||
                            strcasestr(name, "soffice") == name) {
-                    XFakeKeycode(XK_Page_Down, Mod1Mask);
+                    XKeycode(XK_Page_Down, Mod1Mask);
                 } else if (strcasestr(name, "rhythmbox") == name) {
-                    XFakeKeycode(XF86XK_AudioLowerVolume, 0);       // Volume Down
-//                    XFakeKeycode(XK_Down, ControlMask);
+                    XKeycode(XF86XK_AudioLowerVolume, 0);       // Volume Down
+//                    XKeycode(XK_Down, ControlMask);
                 } else if (strcasestr(name, "tvtime") == name) {
-                    XFakeKeycode(XK_KP_Subtract, 0);
+                    XKeycode(XK_KP_Subtract, 0);
                 } else if (strcasestr(name, "totem") == name) {
-                    XFakeKeycode(XK_Down, 0);
+                    XKeycode(XK_Down, 0);
                 } else if (strcasestr(name, "vlc") == name) {
-                    XFakeKeycode(XK_Down, ControlMask);
+                    XKeycode(XK_Down, ControlMask);
                 } else if (strcasestr(name, "xine") == name) {
-                    XFakeKeycode(XK_v, 0);
+                    XKeycode(XK_v, 0);
                 } else if (strcasestr(name, "mplayer") == name) {
-                    XFakeKeycode(XK_9, ShiftMask);
+                    XKeycode(XK_9, ShiftMask);
                 // FIXME: This does not work
                 } else if (strcasestr(name, "gqview") == name) {    // Rotate Counter Clockwise
-                    XFakeKeycode(XK_bracketleft, 0);
+                    XKeycode(XK_bracketleft, 0);
                 } else if (strcasestr(name, "qiv") == name) {
-                    XFakeKeycode(XK_l, 0);
+                    XKeycode(XK_l, 0);
                 // FIXME: No key in eog for rotating counter clockwise ?
                 } else if (strcasestr(name, "eog") == name) {
-                    XFakeKeycode(XK_r, ShiftMask | ControlMask);
+                    XKeycode(XK_r, ShiftMask | ControlMask);
                 } else if (strcasestr(name, "nautilus") == name) {
-                    XFakeKeycode(XK_Down, 0);
+                    XKeycode(XK_Down, 0);
                 } else {
                     if (verbose) fprintf(stderr, "No down-key support for application %s.\n", name);
                 }
@@ -829,42 +743,42 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             if (wmote.keys.right) {
                 if (strcasestr(name, "firefox") == name) {              // Next Tab
-                    XFakeKeycode(XK_Page_Down, ControlMask);
+                    XKeycode(XK_Page_Down, ControlMask);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_F6, ControlMask);
+                    XKeycode(XK_F6, ControlMask);
                 } else if (strcasestr(name, "yelp") == name) {
-                    XFakeKeycode(XK_Right, Mod1Mask);
+                    XKeycode(XK_Right, Mod1Mask);
                 } else if (strcasestr(name, "pidgin") == name) {
-                    XFakeKeycode(XK_Tab, ControlMask);
+                    XKeycode(XK_Tab, ControlMask);
                 } else if (strcasestr(name, "evince") == name) {        // Next Slide
-                    XFakeKeycode(XK_Page_Down, 0);
+                    XKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "openoffice") == name ||
                            strcasestr(name, "soffice") == name) {
-                    XFakeKeycode(XK_Page_Down, 0);
+                    XKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "gqview") == name) {
-                    XFakeKeycode(XK_Page_Down, 0);
+                    XKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "qiv") == name) {
-                    XFakeKeycode(XK_space, 0);
+                    XKeycode(XK_space, 0);
                 } else if (strcasestr(name, "eog") == name) {
-                    XFakeKeycode(XK_Right, 0);
+                    XKeycode(XK_Right, 0);
                 } else if (strcasestr(name, "xpdf") == name) {
-                    XFakeKeycode(XK_n, 0);
+                    XKeycode(XK_n, 0);
                 } else if (strcasestr(name, "acroread") == name) {
-                    XFakeKeycode(XK_Page_Down, 0);
+                    XKeycode(XK_Page_Down, 0);
                 } else if (strcasestr(name, "rhythmbox") == name) {     // Next Song
-                    XFakeKeycode(XK_Right, Mod1Mask);
+                    XKeycode(XK_Right, Mod1Mask);
                 } else if (strcasestr(name, "tvtime") == name) {        // Next Channel
-                    XFakeKeycode(XK_Up, 0);
+                    XKeycode(XK_Up, 0);
                 } else if (strcasestr(name, "totem") == name) {
-                    XFakeKeycode(XK_Right, 0);
+                    XKeycode(XK_Right, 0);
                 } else if (strcasestr(name, "vlc") == name) {           // Skip Forward
-                    XFakeKeycode(XK_Right, Mod1Mask);
+                    XKeycode(XK_Right, Mod1Mask);
                 } else if (strcasestr(name, "mplayer") == name) {
-                    XFakeKeycode(XK_Right, 0);
+                    XKeycode(XK_Right, 0);
                 } else if (strcasestr(name, "xine") == name) {
-                    XFakeKeycode(XK_Right, ControlMask);
+                    XKeycode(XK_Right, ControlMask);
                 } else if (strcasestr(name, "nautilus") == name) {
-                    XFakeKeycode(XK_Right, 0);
+                    XKeycode(XK_Right, 0);
                 } else {
                     if (verbose) fprintf(stderr, "No right-key support for application %s.\n", name);
                 }
@@ -872,42 +786,42 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             if (wmote.keys.left) {
                 if (strcasestr(name, "firefox") == name) {              // Previous Tab
-                    XFakeKeycode(XK_Page_Up, ControlMask);
+                    XKeycode(XK_Page_Up, ControlMask);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_F6, ControlMask | ShiftMask);
+                    XKeycode(XK_F6, ControlMask | ShiftMask);
                 } else if (strcasestr(name, "yelp") == name) {
-                    XFakeKeycode(XK_Left, Mod1Mask);
+                    XKeycode(XK_Left, Mod1Mask);
                 } else if (strcasestr(name, "pidgin") == name) {
-                    XFakeKeycode(XK_Tab, ControlMask | ShiftMask);
+                    XKeycode(XK_Tab, ControlMask | ShiftMask);
                 } else if (strcasestr(name, "evince") == name) {        // Previous Slide
-                    XFakeKeycode(XK_Page_Up, 0);
+                    XKeycode(XK_Page_Up, 0);
                 } else if (strcasestr(name, "openoffice") == name ||
                            strcasestr(name, "soffice") == name) {
-                    XFakeKeycode(XK_Page_Up, 0);
+                    XKeycode(XK_Page_Up, 0);
                 } else if (strcasestr(name, "gqview") == name) {
-                    XFakeKeycode(XK_Page_Up, 0);
+                    XKeycode(XK_Page_Up, 0);
                 } else if (strcasestr(name, "qiv") == name) {
-                    XFakeKeycode(XK_BackSpace, 0);
+                    XKeycode(XK_BackSpace, 0);
                 } else if (strcasestr(name, "eog") == name) {
-                    XFakeKeycode(XK_Left, 0);
+                    XKeycode(XK_Left, 0);
                 } else if (strcasestr(name, "xpdf") == name) {
-                    XFakeKeycode(XK_p, 0);
+                    XKeycode(XK_p, 0);
                 } else if (strcasestr(name, "acroread") == name) {
-                    XFakeKeycode(XK_Page_Up, 0);
+                    XKeycode(XK_Page_Up, 0);
                 } else if (strcasestr(name, "rhythmbox") == name) {    // Previous Song
-                    XFakeKeycode(XK_Left, Mod1Mask);
+                    XKeycode(XK_Left, Mod1Mask);
                 } else if (strcasestr(name, "tvtime") == name) {       // Previous Channel
-                    XFakeKeycode(XK_Down, 0);
+                    XKeycode(XK_Down, 0);
                 } else if (strcasestr(name, "totem") == name) {
-                    XFakeKeycode(XK_Left, 0);
+                    XKeycode(XK_Left, 0);
                 } else if (strcasestr(name, "vlc") == name) {          // Skip Backward
-                    XFakeKeycode(XK_Left, Mod1Mask);
+                    XKeycode(XK_Left, Mod1Mask);
                 } else if (strcasestr(name, "mplayer") == name) {
-                    XFakeKeycode(XK_Left, 0);
+                    XKeycode(XK_Left, 0);
                 } else if (strcasestr(name, "xine") == name) {
-                    XFakeKeycode(XK_Left, ControlMask);
+                    XKeycode(XK_Left, ControlMask);
                 } else if (strcasestr(name, "nautilus") == name) {
-                    XFakeKeycode(XK_Left, 0);
+                    XKeycode(XK_Left, 0);
                 } else {
                     if (verbose) fprintf(stderr, "No left-key support for application %s.\n", name);
                 }
@@ -915,45 +829,45 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             if (wmote.keys.minus) {
                 if (strcasestr(name, "firefox") == name) {              // Zoom Out
-                    XFakeKeycode(XK_minus, ControlMask);
+                    XKeycode(XK_minus, ControlMask);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_minus, 0);
+                    XKeycode(XK_minus, 0);
                 } else if (strcasestr(name, "xterm") == name) {
-                    XFakeKeycode(XK_KP_Subtract, ShiftMask);
+                    XKeycode(XK_KP_Subtract, ShiftMask);
                 } else if (strcasestr(name, "tvtime") == name) {
-                    XFakeKeycode(XK_KP_Subtract, 0);                    // Volume Down
+                    XKeycode(XK_KP_Subtract, 0);                    // Volume Down
                 } else if (strcasestr(name, "totem") == name) {
-                    XFakeKeycode(XK_Down, 0);
+                    XKeycode(XK_Down, 0);
                 } else if (strcasestr(name, "vlc") == name) {
-                    XFakeKeycode(XK_Down, ControlMask);
+                    XKeycode(XK_Down, ControlMask);
                 } else if (strcasestr(name, "xine") == name) {
-                    XFakeKeycode(XK_v, 0);
+                    XKeycode(XK_v, 0);
                 } else if (strcasestr(name, "mplayer") == name) {
-                    XFakeKeycode(XK_9, ShiftMask);
+                    XKeycode(XK_9, ShiftMask);
                 } else {
-                    XFakeKeycode(XF86XK_AudioLowerVolume, 0);
+                    XKeycode(XF86XK_AudioLowerVolume, 0);
                 }
             }
 
             if (wmote.keys.plus) {
                 if (strcasestr(name, "firefox") == name) {              // Zoom In
-                    XFakeKeycode(XK_plus, ControlMask);
+                    XKeycode(XK_plus, ControlMask);
                 } else if (strcasestr(name, "opera") == name) {
-                    XFakeKeycode(XK_plus, 0);
+                    XKeycode(XK_plus, 0);
                 } else if (strcasestr(name, "xterm") == name) {
-                    XFakeKeycode(XK_KP_Add, ShiftMask);
+                    XKeycode(XK_KP_Add, ShiftMask);
                 } else if (strcasestr(name, "tvtime") == name) {
-                    XFakeKeycode(XK_KP_Add, 0);                         // Volume Up
+                    XKeycode(XK_KP_Add, 0);                         // Volume Up
                 } else if (strcasestr(name, "totem") == name) {
-                    XFakeKeycode(XK_Up, 0); 
+                    XKeycode(XK_Up, 0); 
                 } else if (strcasestr(name, "vlc") == name) {
-                    XFakeKeycode(XK_Up, ControlMask);
+                    XKeycode(XK_Up, ControlMask);
                 } else if (strcasestr(name, "xine") == name) {
-                    XFakeKeycode(XK_V, ShiftMask);
+                    XKeycode(XK_V, ShiftMask);
                 } else if (strcasestr(name, "mplayer") == name) {
-                    XFakeKeycode(XK_0, ShiftMask);
+                    XKeycode(XK_0, ShiftMask);
                 } else {
-                    XFakeKeycode(XF86XK_AudioRaiseVolume, 0);
+                    XKeycode(XF86XK_AudioRaiseVolume, 0);
                 }
             }
 
