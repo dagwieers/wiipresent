@@ -26,7 +26,7 @@
   (and fast auto-reconnect)
 
 == Bugs
-- Known bug where for some windows we fail to find an application name
+- Known bug where for the root window (0x01) we find no application name
   - qiv and vlc when going into fullscreen
 
 == Bugs in libwiimote

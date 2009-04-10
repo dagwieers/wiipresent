@@ -129,7 +129,7 @@ Status XFetchProperty (register Display *display, Window window, int property, c
 
 static int IgnoreDeadWindow(Display *display, XErrorEvent *error) {
    if (error->error_code == BadWindow)
-      if (verbose >= 1) printf("Received BadWindow for window 0x08%x.\n", error->resourceid);
+      if (verbose >= 1) printf("Received BadWindow for window 0x%08x.\n", (int) error->resourceid);
    return 0;
 }
 
@@ -175,36 +175,57 @@ int try_family(Display *display, Window window, char **name) {
     Window *children_window;
     unsigned int nchildrens;
 
-    // FIXME: Try children too !
     if (XQueryTree(display, window, &root_window, &parent_window, &children_window, &nchildrens) != 0) {
         if (parent_window) {
             if (XQueryCommand(display, parent_window, name) != 0) {
-                if (verbose >= 3) fprintf(stderr, "Found application %s (0x%08x) using parent window.\n", *name, (unsigned int) parent_window);
-            } else if (try_property(display, window, XA_WM_NAME, name)) {
-                if (verbose >= 3) fprintf(stderr, "Found application %s (0x%08x) using XA_WM_NAME.\n", *name, (unsigned int) window);
-            } else {
-                return 0;
+                if (verbose >= 3) fprintf(stderr, "Found application %s using parent window. (0x%08x)\n", *name, (unsigned int) parent_window);
+            } else if (try_family(display, parent_window, name)) {
+                return 1;
             }
-            return 1;
         }
+    // FIXME: Try children too without looping !
+/*
+        if (nchildrens > 0) {
+            int i;
+            for (i = 0; i < nchildrens; i++) {
+                if (XQueryCommand(display, children_window[i], name) != 0) {
+                    if (verbose >= 3) fprintf(stderr, "Found application %s using child window (0x%08x).\n", *name, (unsigned int) parent_window);
+                }
+            }
+        }
+*/
     }
     return 0;
 }
 
 Status XQueryCommand(Display *display, Window window, char **name) {
+
+    // If root-window, use previous name
+    if (window == 0x01 ) {
+        if (verbose >= 2) fprintf(stderr, "Use previous name %s for root-window.\n", *name);
+        return 1;
+    }
+
+    // Free name as we look for a new one
+//    if (name != NULL) XFree(name);
+
     // Low window ids are guaranteed to be wrong
     if (window < 0xff ) return 0;
 
     if (verbose >= 3) fprintf(stderr, "Working with window (0x%08x).\n", (unsigned int) window);
 
     if (try_classhint(display, window, name)) {
-        if (verbose >= 3) fprintf(stderr, "Found application %s (0x08%x) using XGetClassHint.\n", *name, (unsigned int) window);
+        if (verbose >= 3) fprintf(stderr, "Found application %s (0x%08x) using XGetClassHint.\n", *name, (unsigned int) window);
+    } else if (try_property(display, window, XA_WM_NAME, name)) {
+        if (verbose >= 3) fprintf(stderr, "Found application %s (0x%08x) using XA_WM_NAME.\n", *name, (unsigned int) window);
     } else if (try_property(display, window, XA_WM_COMMAND, name)) {
-        if (verbose >= 3) fprintf(stderr, "Found application %s (0x08%x) using XA_WM_COMMAND.\n", *name, (unsigned int) window);
+        if (verbose >= 3) fprintf(stderr, "Found application %s (0x%08x) using XA_WM_COMMAND.\n", *name, (unsigned int) window);
+    } else if (try_property(display, window, XA_WM_ICON_NAME, name)) {
+        if (verbose >= 3) fprintf(stderr, "Found application %s (0x%08x) using XA_WM_ICON_NAME.\n", *name, (unsigned int) window);
     } else if (try_guessed(display, window, name)) {
-        if (verbose >= 2) fprintf(stderr, "Found application %s using guessed parent window (0x08%x).\n", *name, (unsigned int) (window - window % 0x100000 + 1));
+        if (verbose >= 2) fprintf(stderr, "Found application %s using guessed parent window (0x%08x).\n", *name, (unsigned int) (window - window % 0x100000 + 1));
     } else if (try_family(display, window, name)) {
-        return 1;
+        ;
     } else {
         return 0;
     }
@@ -396,7 +417,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
         int mousemode = False;
 
-        char *name;
+        char *name = NULL;
         XGetInputFocus(display, &window, &revert);
         XQueryCommand(display, window, &name);
         oldwindow = window;
@@ -412,12 +433,11 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             // Handle focus changes
             if (window != oldwindow) {
-                if (name) XFree(name);
                 if (XQueryCommand(display, window, &name) != 0) {
-                    if (verbose >= 2) fprintf(stderr, "Focus on application %s (0x08%x)\n", name, (unsigned int) window);
+                    if (verbose >= 2) fprintf(stderr, "Focus on application %s (0x%08x)\n", name, (unsigned int) window);
                 } else {
                     name = strdup("(unknown)");
-                    fprintf(stderr, "ERROR: Unable to find application name for window 0x08%x\n", (unsigned int) window);
+                    fprintf(stderr, "ERROR: Unable to find application name for window 0x%08x\n", (unsigned int) window);
                 }
                 oldwindow = window;
             }
@@ -525,6 +545,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Page_Up, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_Page_Up, ShiftMask);
+                    } else if (strcasestr(name, "rhythmbox") == name) {
+                        XKeycode(XK_Page_Up, 0);
                     }
                 }
 
@@ -536,6 +558,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Page_Down, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_Page_Down, ShiftMask);
+                    } else if (strcasestr(name, "rhythmbox") == name) {
+                        XKeycode(XK_Page_Down, 0);
                     }
                 }
 
@@ -671,12 +695,12 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_space, ControlMask); 
                     } else if (strcasestr(name, "mplayer") == name) {
                         XKeycode(XK_p, 0);
+                    } else if (strcasestr(name, "gxine") == name) {
+                        XKeycode(XK_space, 0);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_space, 0);
                     } else if (strcasestr(name, "tvtime") == name) {
-                        XKeycode(XK_a, 0); // Change screen ratio
-                    } else if (strcasestr(name, "totem") == name) {
-                        XKeycode(XK_a, 0); // Change screen ratio
+                        XKeycode(XK_i, 0); // Change input source
                     } else if (strcasestr(name, "qiv") == name) {
                         XKeycode(XK_m, 0);  // Maximize
                     } else if (strcasestr(name, "nautilus") == name) {
@@ -726,6 +750,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_f, 0);
                     } else if (strcasestr(name, "vlc") == name) {
                         XKeycode(XK_f, 0);
+                    } else if (strcasestr(name, "gxine") == name) {
+                        XKeycode(XK_f, ControlMask);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_f, 0);
                     } else if (strcasestr(name, "gnome-terminal") == name) {
@@ -736,9 +762,16 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     fullscreentoggle = ! fullscreentoggle;
                 }
 
+                // change screen ratio
                 if (wmote.keys.two) {
                     if (strcasestr(name, "tvtime") == name) {
-                        XKeycode(XK_i, 0);
+                        XKeycode(XK_a, 0);
+                    } else if (strcasestr(name, "totem") == name) {
+                        XKeycode(XK_a, 0);
+                    } else if (strcasestr(name, "gxine") == name) {
+                        XKeycode(XK_a, 0);
+                    } else if (strcasestr(name, "xine") == name) {
+                        XKeycode(XK_a, 0);
                     } else {
                         if (verbose) fprintf(stderr, "No two-key support for application %s.\n", name);
                     }
@@ -770,9 +803,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_V, ShiftMask);
                     } else if (strcasestr(name, "mplayer") == name) {
                         XKeycode(XK_0, ShiftMask);
-                    // FIXME: This does not work
                     } else if (strcasestr(name, "gqview") == name) {
-                        XKeycode(XK_bracketright, 0);
+                        XKeycode(XK_bracketright, 0); // FIXME: This does not work
                     } else if (strcasestr(name, "qiv") == name) {
                         XKeycode(XK_k, 0);
                     } else if (strcasestr(name, "eog") == name) {
@@ -815,14 +847,12 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_v, 0);
                     } else if (strcasestr(name, "mplayer") == name) {
                         XKeycode(XK_9, ShiftMask);
-                    // FIXME: This does not work
                     } else if (strcasestr(name, "gqview") == name) {
-                        XKeycode(XK_bracketleft, 0);
+                        XKeycode(XK_bracketleft, 0); // FIXME: This does not work
                     } else if (strcasestr(name, "qiv") == name) {
                         XKeycode(XK_l, 0);
-                    // FIXME: No key in eog for rotating counter clockwise ?
                     } else if (strcasestr(name, "eog") == name) {
-                        XKeycode(XK_r, ShiftMask | ControlMask);
+                        XKeycode(XK_r, ShiftMask | ControlMask); // FIXME: No key in eog for rotating counter clockwise ?
                     } else if (strcasestr(name, "nautilus") == name) {
                         XKeycode(XK_Down, 0);
                     } else if (strcasestr(name, "xterm") == name) {
@@ -869,6 +899,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     } else if (strcasestr(name, "vlc") == name) {
                         XKeycode(XK_Right, Mod1Mask);
                     } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "gxine") == name) {
                         XKeycode(XK_Right, 0);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_Right, ControlMask);
@@ -918,6 +950,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     } else if (strcasestr(name, "vlc") == name) {
                         XKeycode(XK_Left, Mod1Mask);
                     } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "gxine") == name) {
                         XKeycode(XK_Left, 0);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_Left, ControlMask);
