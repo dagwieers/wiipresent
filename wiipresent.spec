@@ -6,7 +6,7 @@
 
 Summary: Giving presentations with your Wiimote (or control applications with the Wiimote)
 Name: wiipresent
-Version: 0.7.1
+Version: 0.7.1svn
 Release: 1
 License: GPL
 Group: Applications/Productivity
@@ -42,6 +42,9 @@ be used to control your mouse-pointer and control various applications.
 %{_bindir}/wiipresent
 
 %changelog
+* Fri Apr 10 2009 Dag Wieers <dag@wieers.com> - 0.7.1svn-1
+- Updated to release 0.7.1svn.
+
 * Mon Mar 16 2009 Dag Wieers <dag@wieers.com> - 0.7.1-1
 - Updated to release 0.7.1.
 

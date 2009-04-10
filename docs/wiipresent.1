@@ -2,7 +2,7 @@
 .\" It was generated using the DocBook XSL Stylesheets (version 1.69.1).
 .\" Instead of manually editing it, you probably should edit the DocBook XML
 .\" source for it and then use the DocBook XSL Stylesheets to regenerate it.
-.TH "WIIPRESENT" "1" "03/17/2009" "" ""
+.TH "WIIPRESENT" "1" "04/10/2009" "" ""
 .\" disable hyphenation
 .nh
 .\" disable justification (adjust text to left margin only)
@@ -10,7 +10,7 @@
 .SH "NAME"
 wiipresent \- tool to control applications using the wiimote
 .SH "SYNOPSIS"
-wiipresent [\-v] [\-l length] [\-b bluetooth\-address ]
+wiipresent [\-v] [\-l length] \-b bluetooth\-address
 .sp
 .SH "DESCRIPTION"
 wiipresent is a tool to control applications using the wiimote. It was originally developed for using the wiimote to give presentations using openoffice or xpdf, but is now turned into a tool to control your mouse and/or other applications.
@@ -28,6 +28,9 @@ use infrared sensor to move mouse pointer
 .TP
 \-l length, \-\-length=minutes
 presentation length in minutes
+.TP
+\-r, \-\-reconnect
+on disconnect, wait for reconnect
 .TP
 \-t, \-\-tilt
 use tilt sensors to move mouse pointer

@@ -1,26 +1,40 @@
 = WiiPresent
 
+== Priorities
+- Make the mouse pointer move based on IR data (use WMD implementation)
+  (should probably go into libwiimote)
+- Scan for wiimotes and pick the closest (< rssi) nearby if more than one
+  (should probably go into libwiimote)
+- Check if bluetooth device is in fact a wiimote
+  (bluetooth name should be 'Nintendo RVL-CNT-01')
+- Put keycode configuration in seperate config-files that are activated
+  when mouseover application
+
 == Ideas
 - Rumble/flash lights when battery low
 - Make sound when presentation is over
 - Record timings and print timestamp + keypress
   (follow keypresses so we know on what slide we are too)
-- Make the mouse pointer move based on IR data (use WMD implementation)
 - Report when batteries of IR sensorbar are low
   (calculate distance and compare with dot strength)
 - Implement the power button to disconnect the device cleanly
   (this is a bug in libwiimote)
 - Use playertoggle to switch between skip forward and next playback
-- On disconnect, wait for reconnect
-- Scan for wiimotes and pick the closest nearby if more than one
 - Implement on-screen writing as replacement for laser
+  (needs IR working for making this practical)
+- Auto-disconnect option to safe batteries (eg. when used as remote)
+  (and fast auto-reconnect)
 
 == Bugs
-- Known bug where some applications are causing a BadWindow error
-  - vlc when going into fullscreen
-- Applications loosing focus
-  - qiv in fullscreenA
+- Known bug where for some windows we fail to find an application name
+  - qiv and vlc when going into fullscreen
 
 == Bugs in libwiimote
 - Battery status updates do not seem to work ?
 - Infrared only works when acceleration sensors are enabled
+- Unable to capture when wiimote is turned off
+
+== Features for libwiimote
+- Functionality to verify or get the Wiimote name
+- Functionality to scan for wiimotes is missing
+- Absolute positions for infrared handling is missing

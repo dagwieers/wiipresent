@@ -1,3 +1,9 @@
+* 0.7.1svn - release ../04/2009
+- Added -r/--reconnect option to wait for reconnect on disconnect
+- Check bluetooth address length
+- Handle BadWindow errors by ignoring them :-)
+- Improved the logic for getting a window name
+
 * 0.7.1 - release 16/03/2009
 - Added support for totem
 - Pressing A+B at the same time will enable/disable MOUSE mode

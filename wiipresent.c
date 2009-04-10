@@ -34,8 +34,10 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 
 #include "wiimote_api.h"
 
+Status XQueryCommand(Display *display, Window window, char **name);
+
 static char NAME[] = "wiipresent";
-static char VERSION[] = "0.7.1";
+static char VERSION[] = "0.7.1svn";
 
 static char *displayname = NULL;
 static Display *display = NULL;
@@ -125,36 +127,86 @@ Status XFetchProperty (register Display *display, Window window, int property, c
     return 0;
 }
 
-Status XQueryCommand(Display *display, Window window, char **name) {
+static int IgnoreDeadWindow(Display *display, XErrorEvent *error) {
+   if (error->error_code == BadWindow)
+      if (verbose >= 1) printf("Received BadWindow for window 0x08%x.\n", error->resourceid);
+   return 0;
+}
+
+int try_classhint(Display *display, Window window, char **name) {
+    XClassHint xclasshint;
+    if (XGetClassHint(display, window, &xclasshint) != 0) {
+        *name = xclasshint.res_class;
+        XFree(xclasshint.res_name);
+
+        // FIXME: Free when not NULL
+        if (*name != NULL && strcmp(*name, ""))
+            return 1;
+    }
+    return 0;
+}
+
+int try_property(Display *display, Window window, int property, char **name) {
+    if (XFetchProperty(display, window, XA_WM_COMMAND, name) != 0) {
+        // FIXME: Free when not NULL
+        if (*name != NULL && strcmp(*name, ""))
+            return 1;
+    }
+    return 0;
+}
+
+// Implemented for some apps that return a 'weird' parent window id
+int try_guessed(Display *display, Window window, char **name) {
+    Window guessed = window - window % 0x100000 + 1;
+    if (window == guessed)
+        return 0;
+
+    if (XQueryCommand(display, guessed, name) != 0) {
+        // FIXME: Free when not NULL
+        if (*name != NULL && strcmp(*name, ""))
+            return 1;
+    }
+    return 0;
+}
+
+int try_family(Display *display, Window window, char **name) {
     Window root_window;
     Window parent_window;
     Window *children_window;
     unsigned int nchildrens;
 
-    // Prevent BadWindow
-    if (window < 0xff ) return 0;
-
-    if (verbose >= 3) fprintf(stderr, "Working with window (0x%x).\n", (unsigned int) window);
-
-    XClassHint xclasshint;
-    if (XGetClassHint(display, window, &xclasshint) != 0) {
-        *name = xclasshint.res_class;
-        XFree(xclasshint.res_name);
-        if (verbose >= 3) fprintf(stderr, "Found application %s (0x%x) using XGetClassHint.\n", *name, (unsigned int) window);
-    } else if (XFetchProperty(display, window, XA_WM_COMMAND, name) != 0) {
-        if (verbose >= 3) fprintf(stderr, "Found application %s (0x%x) using XA_WM_COMMAND.\n", *name, (unsigned int) window);
-    } else if (window != window - window % 0x100000 + 1 && XQueryCommand(display, window - window % 0x100000 + 1, name) != 0) {
-        if (verbose >= 3) fprintf(stderr, "Found application %s (0x%x) using guessed parent window.\n", *name, (unsigned int) (window - window % 0x100000 + 1));
-    } else if (XQueryTree(display, window, &root_window, &parent_window, &children_window, &nchildrens) != 0) {
+    // FIXME: Try children too !
+    if (XQueryTree(display, window, &root_window, &parent_window, &children_window, &nchildrens) != 0) {
         if (parent_window) {
             if (XQueryCommand(display, parent_window, name) != 0) {
-                if (verbose >= 3) fprintf(stderr, "Found application %s (0x%x) using real parent window.\n", *name, (unsigned int) parent_window);
-            } else if (XFetchProperty(display, window, XA_WM_NAME, name) != 0) {
-                if (verbose >= 3) fprintf(stderr, "Found application %s (0x%x) using XA_WM_NAME.\n", *name, (unsigned int) window);
+                if (verbose >= 3) fprintf(stderr, "Found application %s (0x%08x) using parent window.\n", *name, (unsigned int) parent_window);
+            } else if (try_property(display, window, XA_WM_NAME, name)) {
+                if (verbose >= 3) fprintf(stderr, "Found application %s (0x%08x) using XA_WM_NAME.\n", *name, (unsigned int) window);
             } else {
-                 return 0;
+                return 0;
             }
+            return 1;
         }
+    }
+    return 0;
+}
+
+Status XQueryCommand(Display *display, Window window, char **name) {
+    // Low window ids are guaranteed to be wrong
+    if (window < 0xff ) return 0;
+
+    if (verbose >= 3) fprintf(stderr, "Working with window (0x%08x).\n", (unsigned int) window);
+
+    if (try_classhint(display, window, name)) {
+        if (verbose >= 3) fprintf(stderr, "Found application %s (0x08%x) using XGetClassHint.\n", *name, (unsigned int) window);
+    } else if (try_property(display, window, XA_WM_COMMAND, name)) {
+        if (verbose >= 3) fprintf(stderr, "Found application %s (0x08%x) using XA_WM_COMMAND.\n", *name, (unsigned int) window);
+    } else if (try_guessed(display, window, name)) {
+        if (verbose >= 2) fprintf(stderr, "Found application %s using guessed parent window (0x08%x).\n", *name, (unsigned int) (window - window % 0x100000 + 1));
+    } else if (try_family(display, window, name)) {
+        return 1;
+    } else {
+        return 0;
     }
     return 1;
 }
@@ -185,6 +237,7 @@ int main(int argc, char **argv) {
     char *btaddress = NULL;
     int infrared = False;
     int tilt = True;
+    int reconnect = False;
     wmote = (wiimote_t) WIIMOTE_INIT;
 
     int c;
@@ -202,13 +255,14 @@ int main(int argc, char **argv) {
             {"ir", 0, 0, 'i'},
             {"infrared", 0, 0, 'i'},
             {"length", 1, 0, 'l'},
+            {"reconnect", 1, 0, 'r'},
             {"tilt", 0, 0, 't'},
             {"verbose", 0, 0, 'v'},
             {"version", 0, 0, 'V'},
             {0, 0, 0, 0}
         };
 
-        c = getopt_long (argc, argv, "b:d:hil:tvV", long_options, &option_index);
+        c = getopt_long (argc, argv, "b:d:hil:rtvV", long_options, &option_index);
         if (c == -1)
             break;
 
@@ -227,6 +281,7 @@ int main(int argc, char **argv) {
   -d, --display=name             X display to use\n\
   -i, --infrared                 use infrared sensor to move mouse pointer\n\
   -l, --length=minutes           presentation length in minutes\n\
+  -r, --reconnect                on disconnect, wait for reconnect\n\
   -t, --tilt                     use tilt sensors to move mouse pointer\n\
 \n\
   -h, --help                     display this help and exit\n\
@@ -241,6 +296,9 @@ Report bugs to <dag@wieers.com>.\n", NAME);
                 continue;
             case 'l':
                 length = atoi(optarg) * 60;
+                continue;
+            case 'r':
+                reconnect = True;
                 continue;
             case 't':
                 tilt = True;
@@ -277,606 +335,662 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     if (displayname == NULL)
         displayname = ":0.0";
 
-    display = XOpenDisplay(displayname);
-    if (display == NULL) {
-        fprintf(stderr, "%s: Cannot open display `%s'.\n", NAME, displayname);
-        return -1;
+    // Check bluetooth address
+    if (strlen(btaddress) != 17) {
+        fprintf(stderr, "Bluetooth address %s has incorrect length.\n", btaddress);
+        return 1;
     }
 
-    // Wait for 1+2
-    if (btaddress == NULL) {
-//        printf("Please press 1+2 on a wiimote in the viscinity...");
-//        wiimote_connect(&wmote, btaddress);
-        printf("Sorry, you need to provide a bluetooth address using -b/--bluetooth.\n");
-        exit(1);
-    } else {
-        printf("Please press 1+2 on the wiimote with address %s...", btaddress);
-        wiimote_connect(&wmote, btaddress);
-        printf("\n");
-    }
+    // Reconnect loop
+    do {
+        display = XOpenDisplay(displayname);
+        if (display == NULL) {
+            fprintf(stderr, "%s: Cannot open display `%s'.\n", NAME, displayname);
+            return -1;
+        }
+        XSetErrorHandler(IgnoreDeadWindow);
 
-    signal(SIGINT, exit_clean);
-    signal(SIGHUP, exit_clean);
-    signal(SIGQUIT, exit_clean);
+        // Wait for 1+2
+        if (btaddress == NULL) {
+    //        printf("Please press 1+2 on a wiimote in the viscinity...");
+    //        wiimote_connect(&wmote, btaddress);
+            printf("Sorry, you need to provide a bluetooth address using -b/--bluetooth.\n");
+            exit(1);
+        } else {
+            printf("Please press 1+2 on the wiimote with address %s...", btaddress);
+            wiimote_connect(&wmote, btaddress);
+            printf("\n");
+        }
 
-    if (tilt)
-        fprintf(stderr, "Mouse movement controlled by tilting wiimote.\n");
-    else if (infrared)
-        fprintf(stderr, "Mouse movement controlled by infrared using sensor bar. (EXPERIMNTAL)\n");
-    else
-        fprintf(stderr, "Mouse movement disabled.\n");
+        signal(SIGINT, exit_clean);
+        signal(SIGHUP, exit_clean);
+        signal(SIGQUIT, exit_clean);
 
-    if (length) fprintf(stderr, "Presentation length is %dmin divided in 5 slots of %dmin.\n", length/60, length/60/5);
+        if (tilt)
+            fprintf(stderr, "Mouse movement controlled by tilting wiimote.\n");
+        else if (infrared)
+            fprintf(stderr, "Mouse movement controlled by infrared using sensor bar. (EXPERIMNTAL)\n");
+        else
+            fprintf(stderr, "Mouse movement disabled.\n");
 
-    // Disable screensaver
-    XGetScreenSaver(display, &timeout_return, &interval_return, &prefer_blanking_return, &allow_exposures_return);
-    XSetScreenSaver(display, 0, 0, 1, 0);
+        if (length) fprintf(stderr, "Presentation length is %dmin divided in 5 slots of %dmin.\n", length/60, length/60/5);
 
-    // Get the root window for the current display.
-    int revert;
+        // Disable screensaver
+        XGetScreenSaver(display, &timeout_return, &interval_return, &prefer_blanking_return, &allow_exposures_return);
+        XSetScreenSaver(display, 0, 0, 1, 0);
 
-    time_t start = 0, now = 0, duration = 0;
-    int phase = 0, oldphase = 0;
-    uint16_t keys = 0;
+        // Get the root window for the current display.
+        int revert;
 
-    int oldbattery = 0;
-    Window oldwindow = window;
-    int playertoggle = False;
-    int fullscreentoggle = False;
-    int screensavertoggle = False;
-    int leftmousebutton = False;
-    int rightmousebutton = False;
+        time_t start = 0, now = 0, duration = 0;
+        int phase = 0, oldphase = 0;
+        uint16_t keys = 0;
 
-    int mousemode = False;
+        int oldbattery = 0;
+        Window oldwindow = window;
+        int playertoggle = False;
+        int fullscreentoggle = False;
+        int screensavertoggle = False;
+        int leftmousebutton = False;
+        int rightmousebutton = False;
 
-    char *name;
-    XGetInputFocus(display, &window, &revert);
-    XQueryCommand(display, window, &name);
-    oldwindow = window;
+        int mousemode = False;
 
-    rumble(&wmote, 200);
-
-    start = time(NULL);
-
-    while (wiimote_is_open(&wmote)) {
-
-        // Find the window which has the current keyboard focus.
+        char *name;
         XGetInputFocus(display, &window, &revert);
+        XQueryCommand(display, window, &name);
+        oldwindow = window;
 
-        // Handle focus changes
-        if (window != oldwindow) {
-            if (name) XFree(name);
-            if (XQueryCommand(display, window, &name) != 0) {
-                if (verbose >= 2) fprintf(stderr, "Focus on application %s (0x%x)\n", name, (unsigned int) window);
-            } else {
-                name = strdup("(unknown)");
-                fprintf(stderr, "ERROR: Unable to find application name for window 0x%x\n", (unsigned int) window);
-            }
-            oldwindow = window;
-        }
+        rumble(&wmote, 200);
 
-        if (wiimote_pending(&wmote) == 0) {
-            usleep(10000);
-        }
+        start = time(NULL);
 
-        // FIXME: We should reconnect at our own convenience
-        if (wiimote_update(&wmote) < 0) {
-            printf("Lost connection.");
-            exit_clean(0);
-        }
+        while (wiimote_is_open(&wmote)) {
 
-        // Check battery change
-        // FIXME: Battery level does not seem to get updated ??
-        if (wmote.battery < oldbattery) {
-            if (wmote.battery < 5)
-                printf("Battery low (%d%%), please replace batteries !\n", wmote.battery);
-            else
-                printf("Battery level is now %d%%.\n", wmote.battery);
-            oldbattery = wmote.battery;
-        }
+            // Find the window which has the current keyboard focus.
+            XGetInputFocus(display, &window, &revert);
 
-        // Change leds only when phase changes
-        if (length) {
-            now = time(NULL);
-            duration = now - start;
-            phase = (int) floorf( ( (float) duration * 5.0 / (float) length)) % 5;
-            if (phase != oldphase) {
-                printf("%ld minutes passed, %ld minutes left. (phase=%d)\n", duration / 60, (length - duration) / 60, phase);
-                // Shift the leds
-                wmote.led.bits = pow(2, phase) - 1;
-
-                // Rumble slightly longer at the end (exponentially)
-                rumble(&wmote, 100 * exp(phase + 1) / 10);
-
-                switch (phase)  {
-                    case 0:
-                        printf("Sorry, time is up !\n");
-                        break;
-                    case 4:
-                        printf("Hurry up ! Maybe questions ?\n");
-                        break;
-                }
-                oldphase = phase;
-            }
-        }
-
-//        printf("%f - %f - %f - %ld - %ld - %ld - %d\n", ((float) duration * 5.0 / (float) length), (float) duration, (float) length, start, now, duration, phase);
-
-        // Inside the mouse functionality
-        if (mousemode) {
-
-            // Tilt method
-            if (tilt) {
-                XMovePointer(display, wmote.tilt.x / 4, wmote.tilt.y / 4, 1);
-
-            // Infrared method
-            } else if (infrared) {
-
-//                XMovePointer(display, (int) absx * width, (int) absy * height, 0);
-
-            }
-        }
-
-        // Block repeating keys
-        if (keys == wmote.keys.bits) {
-            continue;
-        }
-
-        // WINDOW MODE
-        if (wmote.keys.b) {
-            if (wmote.keys.a) {
-                mousemode = ! mousemode;
-                if (mousemode) {
-                    if (verbose >= 1) fprintf(stderr, "Entering mouse-mode. ");
-                    if (tilt) {
-                        if (verbose >= 1) fprintf(stderr, "Tilt sensors enabled.\n");
-                    } else if (infrared) {
-                        if (verbose >= 1) fprintf(stderr, "Infrared camera enabled.\n");
-                        wmote.mode.ir = 1;
-                    }
-                    // Infrared only works if acceleration sensors are enabled.
-                    wmote.mode.acc = 1;
+            // Handle focus changes
+            if (window != oldwindow) {
+                if (name) XFree(name);
+                if (XQueryCommand(display, window, &name) != 0) {
+                    if (verbose >= 2) fprintf(stderr, "Focus on application %s (0x08%x)\n", name, (unsigned int) window);
                 } else {
-                    if (verbose >= 1) fprintf(stderr, "Leaving mouse-mode. ");
-                    if (tilt) {
-                        if (verbose >= 1) fprintf(stderr, "Tilt sensors disabled.\n");
-                    } else if (infrared) {
-                        if (verbose >= 1) fprintf(stderr, "Infrared camera disabled.\n");
+                    name = strdup("(unknown)");
+                    fprintf(stderr, "ERROR: Unable to find application name for window 0x08%x\n", (unsigned int) window);
+                }
+                oldwindow = window;
+            }
+
+            if (wiimote_pending(&wmote) == 0) {
+                usleep(10000);
+            }
+
+            // FIXME: We should reconnect at our own convenience
+            if (wiimote_update(&wmote) < 0) {
+                printf("Lost connection.");
+                exit_clean(0);
+            }
+
+            // Check battery change
+            // FIXME: Battery level does not seem to get updated ??
+            if (wmote.battery < oldbattery) {
+                if (wmote.battery < 5)
+                    printf("Battery low (%d%%), please replace batteries !\n", wmote.battery);
+                else
+                    printf("Battery level is now %d%%.\n", wmote.battery);
+                oldbattery = wmote.battery;
+            }
+
+            // Change leds only when phase changes
+            if (length) {
+                now = time(NULL);
+                duration = now - start;
+                phase = (int) floorf( ( (float) duration * 5.0 / (float) length)) % 5;
+                if (phase != oldphase) {
+                    printf("%ld minutes passed, %ld minutes left. (phase=%d)\n", duration / 60, (length - duration) / 60, phase);
+                    // Shift the leds
+                    wmote.led.bits = pow(2, phase) - 1;
+
+                    // Rumble slightly longer at the end (exponentially)
+                    rumble(&wmote, 100 * exp(phase + 1) / 10);
+
+                    switch (phase)  {
+                        case 0:
+                            printf("Sorry, time is up !\n");
+                            break;
+                        case 4:
+                            printf("Hurry up ! Maybe questions ?\n");
+                            break;
+                    }
+                    oldphase = phase;
+                }
+            }
+
+//            printf("%f - %f - %f - %ld - %ld - %ld - %d\n", ((float) duration * 5.0 / (float) length), (float) duration, (float) length, start, now, duration, phase);
+
+            // Inside the mouse functionality
+            if (mousemode) {
+
+                // Tilt method
+                if (tilt) {
+                    XMovePointer(display, wmote.tilt.x / 4, wmote.tilt.y / 4, 1);
+
+                // Infrared method
+                } else if (infrared) {
+
+//                    XMovePointer(display, (int) absx * width, (int) absy * height, 0);
+
+                }
+            }
+
+            // Block repeating keys
+            if (keys == wmote.keys.bits) {
+                continue;
+            }
+
+            // WINDOW MODE
+            if (wmote.keys.b) {
+                if (wmote.keys.a) {
+                    mousemode = ! mousemode;
+                    if (mousemode) {
+                        if (verbose >= 1) fprintf(stderr, "Entering mouse-mode. ");
+                        if (tilt) {
+                            if (verbose >= 1) fprintf(stderr, "Tilt sensors enabled.\n");
+                        } else if (infrared) {
+                            if (verbose >= 1) fprintf(stderr, "Infrared camera enabled.\n");
+                            wmote.mode.ir = 1;
+                        }
+                        // Infrared only works if acceleration sensors are enabled.
+                        wmote.mode.acc = 1;
+                    } else {
+                        if (verbose >= 1) fprintf(stderr, "Leaving mouse-mode. ");
+                        if (tilt) {
+                            if (verbose >= 1) fprintf(stderr, "Tilt sensors disabled.\n");
+                        } else if (infrared) {
+                            if (verbose >= 1) fprintf(stderr, "Infrared camera disabled.\n");
+                            wmote.mode.acc = 0;
+                        }
+                        // Infrared only works if acceleration sensors are enabled.
                         wmote.mode.acc = 0;
                     }
-                    // Infrared only works if acceleration sensors are enabled.
-                    wmote.mode.acc = 0;
+
                 }
 
-            }
-
-            if (wmote.keys.up) {
-                if (strcasestr(name, "firefox") == name) {          // Scroll Up
-                    XKeycode(XK_Page_Up, 0);
-                } else if (strcasestr(name, "opera") == name) {
-                    XKeycode(XK_Page_Up, 0);
+                // Scroll up
+                if (wmote.keys.up) {
+                    if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_Page_Up, 0);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_Page_Up, 0);
+                    } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_Page_Up, ShiftMask);
+                    }
                 }
-            }
- 
-            if (wmote.keys.down) {
-                if (strcasestr(name, "firefox") == name) {          // Scroll Up
-                    XKeycode(XK_Page_Down, 0);
-                } else if (strcasestr(name, "opera") == name) {
-                    XKeycode(XK_Page_Down, 0);
+
+                // Scroll down
+                if (wmote.keys.down) {
+                    if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_Page_Down, ShiftMask);
+                    }
                 }
+
+                // FIXME: We have to keep Alt pressed if we want to browse between apps
+                if (wmote.keys.left) {
+                    XKeycode(XK_Tab, Mod1Mask | ShiftMask);
+                }
+
+                if (wmote.keys.right) {
+                    XKeycode(XK_Tab, Mod1Mask);
+                }
+
+                // Previous workspace
+                if (wmote.keys.minus) {
+                    XKeycode(XK_Left, ControlMask | Mod1Mask);
+                }
+
+                // Next workspace
+                if (wmote.keys.plus) {
+                    XKeycode(XK_Right, ControlMask | Mod1Mask);
+                }
+
+                if (wmote.keys.two) {
+                    // Mute audio
+                    if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_m, 0);
+                    } else if (strcasestr(name, "xine") == name) {
+                        XKeycode(XK_m, ControlMask);
+                    } else {
+                        XKeycode(XF86XK_AudioMute, 0);
+                    }
+
+                    // Blank screen
+                    if (screensavertoggle) {
+                        XForceScreenSaver(display, ScreenSaverReset);
+                    } else {
+                        XActivateScreenSaver(display);
+                    }
+
+                    screensavertoggle = ! screensavertoggle;
+                }
+
+                // Save the keys state for next run
+                keys = wmote.keys.bits;
+                continue;
             }
 
-            // FIXME: We have to keep Alt pressed if we want to browse between apps
-            if (wmote.keys.left) {
-                XKeycode(XK_Tab, Mod1Mask | ShiftMask);
-            }
-
-            if (wmote.keys.right) {
-                XKeycode(XK_Tab, Mod1Mask);
-            }
-
-            // Previous workspace
-            if (wmote.keys.minus) {
-                XKeycode(XK_Left, ControlMask | Mod1Mask);
-            }
-
-            // Next workspace
-            if (wmote.keys.plus) {
-                XKeycode(XK_Right, ControlMask | Mod1Mask);
-            }
-
-            if (wmote.keys.two) {
-                // Mute audio
-                if (strcasestr(name, "mplayer") == name) {
-                    XKeycode(XK_m, 0);
-                } else if (strcasestr(name, "xine") == name) {
-                    XKeycode(XK_m, ControlMask);
+            // MOUSE MODE
+            if (mousemode) {
+                // Left mouse button events
+                if (wmote.keys.minus || wmote.keys.a) {
+                    if (! leftmousebutton) {
+                        if (verbose >= 3) fprintf(stderr, "Mouse left button pressed.\n");
+                        XClickMouse(display, 1, 1);
+                        leftmousebutton = ! leftmousebutton;
+                    }
                 } else {
-                    XKeycode(XF86XK_AudioMute, 0);
+                    if (leftmousebutton) {
+                        if (verbose >= 3) fprintf(stderr, "Mouse left button released.\n");
+                        XClickMouse(display, 1, 0);
+                        leftmousebutton = ! leftmousebutton;
+                    }
                 }
 
-                // Blank screen
-                if (screensavertoggle) {
-                    XForceScreenSaver(display, ScreenSaverReset);
+                // Right mouse button events
+                if (wmote.keys.plus) {
+                    if (! rightmousebutton) {
+                        if (verbose >= 3) fprintf(stderr, "Mouse right button pressed.\n");
+                        XClickMouse(display, 3, 1);
+                        rightmousebutton = ! rightmousebutton;
+                    }
                 } else {
-                    XActivateScreenSaver(display);
+                    if (rightmousebutton) {
+                        if (verbose >= 3) fprintf(stderr, "Mouse right button released.\n");
+                        XClickMouse(display, 3, 0);
+                        rightmousebutton = ! rightmousebutton;
+                    }
                 }
 
-                screensavertoggle = ! screensavertoggle;
+            // APPLICATION MODE
+            } else {
+
+                // Go home/back
+                if (wmote.keys.home) {
+                    if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_Home, 0);
+                    } else if (strcasestr(name, "yelp") == name) {
+                        XKeycode(XK_Home, 0);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_Home, 0);
+                    } else if (strcasestr(name, "evince") == name) {
+                        XKeycode(XK_Home, ControlMask);
+                    } else if (strcasestr(name, "eog") == name) {
+                        XKeycode(XK_Home, 0);
+                    } else if (strcasestr(name, "xpdf") == name) {
+                        XKeycode(XK_Home, ControlMask);
+                    } else if (strcasestr(name, "acroread") == name) {
+                        XKeycode(XK_Home, 0);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_BackSpace, ShiftMask);
+                    } else if (strcasestr(name, "openoffice") == name ||
+                               strcasestr(name, "soffice") == name) {
+                        XKeycode(XK_Home, 0);
+                    } else {
+                        if (verbose) fprintf(stderr, "No home-key support for application %s.\n", name);
+                    }
+                }
+
+                // Next slide/page, play/pause, enter
+                if (wmote.keys.a) {
+                    if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_Return, 0);
+                    } else if (strcasestr(name, "yelp") == name) {
+                        XKeycode(XK_Return, 0);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_Return, 0);
+                    } else if (strcasestr(name, "evince") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "openoffice") == name ||
+                               strcasestr(name, "soffice") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "gqview") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "qiv") == name) {
+                        XKeycode(XK_space, 0);
+                    } else if (strcasestr(name, "eog") == name) {
+                        XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "xpdf") == name) {
+                        XKeycode(XK_n, 0);
+                    } else if (strcasestr(name, "acroread") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "rhythmbox") == name) {
+                        XKeycode(XK_space, ControlMask); 
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_p, 0);
+                    } else if (strcasestr(name, "xine") == name) {
+                        XKeycode(XK_space, 0);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_a, 0); // Change screen ratio
+                    } else if (strcasestr(name, "totem") == name) {
+                        XKeycode(XK_a, 0); // Change screen ratio
+                    } else if (strcasestr(name, "qiv") == name) {
+                        XKeycode(XK_m, 0);  // Maximize
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_Return, ShiftMask);
+                    } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_Return, 0);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_Return, 0);
+                    } else {
+//                        if (verbose) fprintf(stderr, "No A-key support for application %s.\n", name);
+                        XKeycode(XK_Return, 0);
+                    }
+                    playertoggle = ! playertoggle;
+                }
+
+                // Fullscreen
+                if (wmote.keys.one) {
+                    if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_F11, 0);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_F11, 0);
+                    } else if (strcasestr(name, "evince") == name) {
+                        XKeycode(XK_F5, 0);
+                    } else if (strcasestr(name, "openoffice") == name ||
+                               strcasestr(name, "soffice") == name) {
+                        if (fullscreentoggle)
+                            XKeycode(XK_Escape, 0);
+                        else
+                            XKeycode(XK_F9, 0);
+                    } else if (strcasestr(name, "gqview") == name) {
+                        XKeycode(XK_F, 0);
+                    } else if (strcasestr(name, "qiv") == name) {
+                        XKeycode(XK_f, 0);
+                    } else if (strcasestr(name, "eog") == name) {
+                        XKeycode(XK_F11, 0);
+                    } else if (strcasestr(name, "xpdf") == name) {
+                        XKeycode(XK_F, Mod1Mask);
+                    } else if (strcasestr(name, "acroread") == name) {
+                        XKeycode(XK_L, ControlMask);
+                    } else if (strcasestr(name, "rhythmbox") == name) {
+                        XKeycode(XK_F11, 0);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_f, 0);
+                    } else if (strcasestr(name, "totem") == name) {
+                        XKeycode(XK_f, 0);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_f, 0);
+                    } else if (strcasestr(name, "vlc") == name) {
+                        XKeycode(XK_f, 0);
+                    } else if (strcasestr(name, "xine") == name) {
+                        XKeycode(XK_f, 0);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_F11, 0);
+                    } else {
+                        if (verbose) fprintf(stderr, "No one-key support for application %s.\n", name);
+                    }
+                    fullscreentoggle = ! fullscreentoggle;
+                }
+
+                if (wmote.keys.two) {
+                    if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_i, 0);
+                    } else {
+                        if (verbose) fprintf(stderr, "No two-key support for application %s.\n", name);
+                    }
+                }
+
+                // Scroll up, volume up, rotate
+                if (wmote.keys.up) {
+                    if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_Tab, ShiftMask);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_Up, ControlMask);
+                    } else if (strcasestr(name, "yelp") == name) {
+                        XKeycode(XK_Tab, ShiftMask);
+                    } else if (strcasestr(name, "pidgin") == name) {
+                        XKeycode(XK_Page_Up, 0);
+                    } else if (strcasestr(name, "openoffice") == name ||
+                               strcasestr(name, "soffice") == name) {
+                        XKeycode(XK_Page_Up, Mod1Mask);
+                    } else if (strcasestr(name, "rhythmbox") == name) {
+                        XKeycode(XF86XK_AudioRaiseVolume, 0);
+//                        XKeycode(XK_Up, ControlMask);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_KP_Add, 0);
+                    } else if (strcasestr(name, "totem") == name) {
+                        XKeycode(XK_Up, 0);
+                    } else if (strcasestr(name, "vlc") == name) {
+                        XKeycode(XK_Up, ControlMask);
+                    } else if (strcasestr(name, "xine") == name) {
+                        XKeycode(XK_V, ShiftMask);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_0, ShiftMask);
+                    // FIXME: This does not work
+                    } else if (strcasestr(name, "gqview") == name) {
+                        XKeycode(XK_bracketright, 0);
+                    } else if (strcasestr(name, "qiv") == name) {
+                        XKeycode(XK_k, 0);
+                    } else if (strcasestr(name, "eog") == name) {
+                        XKeycode(XK_r, ControlMask);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_Up, 0);
+                    } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_Up, 0);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_Up, 0);
+                    } else {
+//                        if (verbose) fprintf(stderr, "No up-key for application %s.\n", name);
+                        XKeycode(XK_Up, 0);
+                    }
+                }
+
+                // Scroll down, volume down, rotate back, cursor down
+                if (wmote.keys.down) {
+                    if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_Tab, 0);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_Down, ControlMask);
+                    } else if (strcasestr(name, "yelp") == name) {
+                        XKeycode(XK_Tab, 0);
+                    } else if (strcasestr(name, "pidgin") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "openoffice") == name ||
+                               strcasestr(name, "soffice") == name) {
+                        XKeycode(XK_Page_Down, Mod1Mask);
+                    } else if (strcasestr(name, "rhythmbox") == name) {
+                        XKeycode(XF86XK_AudioLowerVolume, 0);
+//                        XKeycode(XK_Down, ControlMask);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_KP_Subtract, 0);
+                    } else if (strcasestr(name, "totem") == name) {
+                        XKeycode(XK_Down, 0);
+                    } else if (strcasestr(name, "vlc") == name) {
+                        XKeycode(XK_Down, ControlMask);
+                    } else if (strcasestr(name, "xine") == name) {
+                        XKeycode(XK_v, 0);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_9, ShiftMask);
+                    // FIXME: This does not work
+                    } else if (strcasestr(name, "gqview") == name) {
+                        XKeycode(XK_bracketleft, 0);
+                    } else if (strcasestr(name, "qiv") == name) {
+                        XKeycode(XK_l, 0);
+                    // FIXME: No key in eog for rotating counter clockwise ?
+                    } else if (strcasestr(name, "eog") == name) {
+                        XKeycode(XK_r, ShiftMask | ControlMask);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_Down, 0);
+                    } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_Down, 0);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_Down, 0);
+                    } else {
+//                        if (verbose) fprintf(stderr, "No down-key support for application %s.\n", name);
+                        XKeycode(XK_Down, 0);
+                    }
+                }
+
+                // Next tab/slide/song/channel, skip firward, cursor right
+                if (wmote.keys.right) {
+                    if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_Page_Down, ControlMask);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_F6, ControlMask);
+                    } else if (strcasestr(name, "yelp") == name) {
+                        XKeycode(XK_Right, Mod1Mask);
+                    } else if (strcasestr(name, "pidgin") == name) {
+                        XKeycode(XK_Tab, ControlMask);
+                    } else if (strcasestr(name, "evince") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "openoffice") == name ||
+                               strcasestr(name, "soffice") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "gqview") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "qiv") == name) {
+                        XKeycode(XK_space, 0);
+                    } else if (strcasestr(name, "eog") == name) {
+                        XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "xpdf") == name) {
+                        XKeycode(XK_n, 0);
+                    } else if (strcasestr(name, "acroread") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "rhythmbox") == name) {
+                        XKeycode(XK_Right, Mod1Mask);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_Up, 0);
+                    } else if (strcasestr(name, "totem") == name) {
+                        XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "vlc") == name) {
+                        XKeycode(XK_Right, Mod1Mask);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "xine") == name) {
+                        XKeycode(XK_Right, ControlMask);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_Right, 0);
+                    } else {
+//                        if (verbose) fprintf(stderr, "No right-key support for application %s.\n", name);
+                        XKeycode(XK_Right, 0);
+                    }
+                }
+
+                // Previous tab/slide/song/channel, skip backward
+                if (wmote.keys.left) {
+                    if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_Page_Up, ControlMask);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_F6, ControlMask | ShiftMask);
+                    } else if (strcasestr(name, "yelp") == name) {
+                        XKeycode(XK_Left, Mod1Mask);
+                    } else if (strcasestr(name, "pidgin") == name) {
+                        XKeycode(XK_Tab, ControlMask | ShiftMask);
+                    } else if (strcasestr(name, "evince") == name) {
+                        XKeycode(XK_Page_Up, 0);
+                    } else if (strcasestr(name, "openoffice") == name ||
+                               strcasestr(name, "soffice") == name) {
+                        XKeycode(XK_Page_Up, 0);
+                    } else if (strcasestr(name, "gqview") == name) {
+                        XKeycode(XK_Page_Up, 0);
+                    } else if (strcasestr(name, "qiv") == name) {
+                        XKeycode(XK_BackSpace, 0);
+                    } else if (strcasestr(name, "eog") == name) {
+                        XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "xpdf") == name) {
+                        XKeycode(XK_p, 0);
+                    } else if (strcasestr(name, "acroread") == name) {
+                        XKeycode(XK_Page_Up, 0);
+                    } else if (strcasestr(name, "rhythmbox") == name) {
+                        XKeycode(XK_Left, Mod1Mask);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_Down, 0);
+                    } else if (strcasestr(name, "totem") == name) {
+                        XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "vlc") == name) {
+                        XKeycode(XK_Left, Mod1Mask);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "xine") == name) {
+                        XKeycode(XK_Left, ControlMask);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_Left, 0);
+                    } else {
+//                        if (verbose) fprintf(stderr, "No left-key support for application %s.\n", name);
+                        XKeycode(XK_Left, 0);
+                    }
+                }
+
+                // Zoom out, voldume down
+                if (wmote.keys.minus) {
+                    if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_minus, ControlMask);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_minus, 0);
+                    } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_KP_Subtract, ShiftMask);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_minus, ControlMask);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_KP_Subtract, 0);
+                    } else if (strcasestr(name, "totem") == name) {
+                        XKeycode(XK_Down, 0);
+                    } else if (strcasestr(name, "vlc") == name) {
+                        XKeycode(XK_Down, ControlMask);
+                    } else if (strcasestr(name, "xine") == name) {
+                        XKeycode(XK_v, 0);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_9, ShiftMask);
+                    } else {
+                        XKeycode(XF86XK_AudioLowerVolume, 0);
+                    }
+                }
+
+                // Zoom in, volume up
+                if (wmote.keys.plus) {
+                    if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_plus, ControlMask);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_plus, 0);
+                    } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_KP_Add, ShiftMask);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_plus, ShiftMask | ControlMask);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_KP_Add, 0);
+                    } else if (strcasestr(name, "totem") == name) {
+                        XKeycode(XK_Up, 0); 
+                    } else if (strcasestr(name, "vlc") == name) {
+                        XKeycode(XK_Up, ControlMask);
+                    } else if (strcasestr(name, "xine") == name) {
+                        XKeycode(XK_V, ShiftMask);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_0, ShiftMask);
+                    } else {
+                        XKeycode(XF86XK_AudioRaiseVolume, 0);
+                    }
+                }
+
             }
 
             // Save the keys state for next run
             keys = wmote.keys.bits;
-            continue;
         }
+        XCloseDisplay(display);
 
-        // MOUSE MODE
-        if (mousemode) {
-            // Left mouse button events
-            if (wmote.keys.minus || wmote.keys.a) {
-                if (! leftmousebutton) {
-                    if (verbose >= 3) fprintf(stderr, "Mouse left button pressed.\n");
-                    XClickMouse(display, 1, 1);
-                    leftmousebutton = ! leftmousebutton;
-                }
-            } else {
-                if (leftmousebutton) {
-                    if (verbose >= 3) fprintf(stderr, "Mouse left button released.\n");
-                    XClickMouse(display, 1, 0);
-                    leftmousebutton = ! leftmousebutton;
-                }
-            }
-
-            // Right mouse button events
-            if (wmote.keys.plus) {
-                if (! rightmousebutton) {
-                    if (verbose >= 3) fprintf(stderr, "Mouse right button pressed.\n");
-                    XClickMouse(display, 3, 1);
-                    rightmousebutton = ! rightmousebutton;
-                }
-            } else {
-                if (rightmousebutton) {
-                    if (verbose >= 3) fprintf(stderr, "Mouse right button released.\n");
-                    XClickMouse(display, 3, 0);
-                    rightmousebutton = ! rightmousebutton;
-                }
-            }
-
-        // APPLICATION MODE
-        } else {
-
-            // Go home/back
-            if (wmote.keys.home) {
-                if (strcasestr(name, "firefox") == name) {          // Enter
-                    XKeycode(XK_Home, 0);
-                } else if (strcasestr(name, "yelp") == name) {
-                    XKeycode(XK_Home, 0);
-                } else if (strcasestr(name, "opera") == name) {
-                    XKeycode(XK_Home, 0);
-                } else if (strcasestr(name, "evince") == name) {
-                    XKeycode(XK_Home, ControlMask);
-                } else if (strcasestr(name, "eog") == name) {
-                    XKeycode(XK_Home, 0);
-                } else if (strcasestr(name, "xpdf") == name) {
-                    XKeycode(XK_Home, ControlMask);
-                } else if (strcasestr(name, "acroread") == name) {
-                    XKeycode(XK_Home, 0);
-                } else if (strcasestr(name, "nautilus") == name) {
-                    XKeycode(XK_BackSpace, ShiftMask);
-                } else if (strcasestr(name, "openoffice") == name ||
-                           strcasestr(name, "soffice") == name) {
-                    XKeycode(XK_Home, 0);
-                } else {
-                    if (verbose) fprintf(stderr, "No home-key support for application %s.\n", name);
-                }
-            }
-
-            if (wmote.keys.a) {
-                if (strcasestr(name, "firefox") == name) {          // Enter
-                    XKeycode(XK_Return, 0);
-                } else if (strcasestr(name, "yelp") == name) {
-                    XKeycode(XK_Return, 0);
-                } else if (strcasestr(name, "opera") == name) {
-                    XKeycode(XK_Return, 0);
-                } else if (strcasestr(name, "evince") == name) {        // Next Slide
-                    XKeycode(XK_Page_Down, 0);
-                } else if (strcasestr(name, "openoffice") == name ||
-                           strcasestr(name, "soffice") == name) {
-                    XKeycode(XK_Page_Down, 0);
-                } else if (strcasestr(name, "gqview") == name) {
-                    XKeycode(XK_Page_Down, 0);
-                } else if (strcasestr(name, "qiv") == name) {
-                    XKeycode(XK_space, 0);
-                } else if (strcasestr(name, "eog") == name) {
-                    XKeycode(XK_Right, 0);
-                } else if (strcasestr(name, "xpdf") == name) {
-                    XKeycode(XK_n, 0);
-                } else if (strcasestr(name, "acroread") == name) {
-                    XKeycode(XK_Page_Down, 0);
-                } else if (strcasestr(name, "rhythmbox") == name) { // Play/Pause
-                    XKeycode(XK_space, ControlMask); 
-                } else if (strcasestr(name, "mplayer") == name) {
-                    XKeycode(XK_p, 0);
-                } else if (strcasestr(name, "xine") == name) {
-                    XKeycode(XK_space, 0);
-                } else if (strcasestr(name, "tvtime") == name) {    // Change screen ratio
-                    XKeycode(XK_a, 0);
-                } else if (strcasestr(name, "totem") == name) {
-                    XKeycode(XK_a, 0);
-                } else if (strcasestr(name, "qiv") == name) {       // Maximize
-                    XKeycode(XK_m, 0);
-                } else if (strcasestr(name, "nautilus") == name) {
-                    XKeycode(XK_Return, ShiftMask);
-                } else {
-                    if (verbose) fprintf(stderr, "No A-key support for application %s.\n", name);
-                }
-                playertoggle = ! playertoggle;
-            }
-
-            if (wmote.keys.one) {
-                if (strcasestr(name, "firefox") == name) {          // Fullscreen
-                    XKeycode(XK_F11, 0);
-                } else if (strcasestr(name, "opera") == name) {
-                    XKeycode(XK_F11, 0);
-                } else if (strcasestr(name, "evince") == name) {
-                    XKeycode(XK_F5, 0);
-                } else if (strcasestr(name, "openoffice") == name ||
-                           strcasestr(name, "soffice") == name) {
-                    if (fullscreentoggle)
-                        XKeycode(XK_Escape, 0);
-                    else
-                        XKeycode(XK_F9, 0);
-                } else if (strcasestr(name, "gqview") == name) {
-                    XKeycode(XK_F, 0);
-                } else if (strcasestr(name, "qiv") == name) {
-                    XKeycode(XK_f, 0);
-                } else if (strcasestr(name, "eog") == name) {
-                    XKeycode(XK_F11, 0);
-                } else if (strcasestr(name, "xpdf") == name) {
-                    XKeycode(XK_F, Mod1Mask);
-                } else if (strcasestr(name, "acroread") == name) {
-                    XKeycode(XK_L, ControlMask);
-                } else if (strcasestr(name, "rhythmbox") == name) {
-                    XKeycode(XK_F11, 0);
-                } else if (strcasestr(name, "tvtime") == name) {
-                    XKeycode(XK_f, 0);
-                } else if (strcasestr(name, "totem") == name) {
-                    XKeycode(XK_f, 0);
-                } else if (strcasestr(name, "mplayer") == name) {
-                    XKeycode(XK_f, 0);
-                } else if (strcasestr(name, "vlc") == name) {
-                    XKeycode(XK_f, 0);
-                } else if (strcasestr(name, "xine") == name) {
-                    XKeycode(XK_f, 0);
-                } else {
-                    if (verbose) fprintf(stderr, "No one-key support for application %s.\n", name);
-                }
-                fullscreentoggle = ! fullscreentoggle;
-            }
-
-            if (wmote.keys.two) {
-                if (strcasestr(name, "tvtime") == name) {
-                    XKeycode(XK_i, 0);
-                } else {
-                    if (verbose) fprintf(stderr, "No two-key support for application %s.\n", name);
-                }
-            }
-
-            if (wmote.keys.up) {
-                if (strcasestr(name, "firefox") == name) {          // Scroll Up
-                    XKeycode(XK_Tab, ShiftMask);
-                } else if (strcasestr(name, "opera") == name) {
-                    XKeycode(XK_Up, ControlMask);
-                } else if (strcasestr(name, "yelp") == name) {
-                    XKeycode(XK_Tab, ShiftMask);
-                } else if (strcasestr(name, "pidgin") == name) {
-                    XKeycode(XK_Page_Up, 0);
-                } else if (strcasestr(name, "openoffice") == name ||
-                           strcasestr(name, "soffice") == name) {
-                    XKeycode(XK_Page_Up, Mod1Mask);
-                } else if (strcasestr(name, "rhythmbox") == name) { // Volume Up
-                    XKeycode(XF86XK_AudioRaiseVolume, 0);
-//                    XKeycode(XK_Up, ControlMask);
-                } else if (strcasestr(name, "tvtime") == name) {
-                    XKeycode(XK_KP_Add, 0);
-                } else if (strcasestr(name, "totem") == name) {
-                    XKeycode(XK_Up, 0);
-                } else if (strcasestr(name, "vlc") == name) {
-                    XKeycode(XK_Up, ControlMask);
-                } else if (strcasestr(name, "xine") == name) {
-                    XKeycode(XK_V, ShiftMask);
-                } else if (strcasestr(name, "mplayer") == name) {
-                    XKeycode(XK_0, ShiftMask);
-                // FIXME: This does not work
-                } else if (strcasestr(name, "gqview") == name) {      // Rotate Clockwise
-                    XKeycode(XK_bracketright, 0);
-                } else if (strcasestr(name, "qiv") == name) {
-                    XKeycode(XK_k, 0);
-                } else if (strcasestr(name, "eog") == name) {
-                    XKeycode(XK_r, ControlMask);
-                } else if (strcasestr(name, "nautilus") == name) {
-                    XKeycode(XK_Up, 0);
-                } else {
-                    if (verbose) fprintf(stderr, "No up-key for application %s.\n", name);
-                }
-            }
-
-            if (wmote.keys.down) {
-                if (strcasestr(name, "firefox") == name) {          // Scroll Down
-                    XKeycode(XK_Tab, 0);
-                } else if (strcasestr(name, "opera") == name) {
-                    XKeycode(XK_Down, ControlMask);
-                } else if (strcasestr(name, "yelp") == name) {
-                    XKeycode(XK_Tab, 0);
-                } else if (strcasestr(name, "pidgin") == name) {
-                    XKeycode(XK_Page_Down, 0);
-                } else if (strcasestr(name, "openoffice") == name ||
-                           strcasestr(name, "soffice") == name) {
-                    XKeycode(XK_Page_Down, Mod1Mask);
-                } else if (strcasestr(name, "rhythmbox") == name) {
-                    XKeycode(XF86XK_AudioLowerVolume, 0);       // Volume Down
-//                    XKeycode(XK_Down, ControlMask);
-                } else if (strcasestr(name, "tvtime") == name) {
-                    XKeycode(XK_KP_Subtract, 0);
-                } else if (strcasestr(name, "totem") == name) {
-                    XKeycode(XK_Down, 0);
-                } else if (strcasestr(name, "vlc") == name) {
-                    XKeycode(XK_Down, ControlMask);
-                } else if (strcasestr(name, "xine") == name) {
-                    XKeycode(XK_v, 0);
-                } else if (strcasestr(name, "mplayer") == name) {
-                    XKeycode(XK_9, ShiftMask);
-                // FIXME: This does not work
-                } else if (strcasestr(name, "gqview") == name) {    // Rotate Counter Clockwise
-                    XKeycode(XK_bracketleft, 0);
-                } else if (strcasestr(name, "qiv") == name) {
-                    XKeycode(XK_l, 0);
-                // FIXME: No key in eog for rotating counter clockwise ?
-                } else if (strcasestr(name, "eog") == name) {
-                    XKeycode(XK_r, ShiftMask | ControlMask);
-                } else if (strcasestr(name, "nautilus") == name) {
-                    XKeycode(XK_Down, 0);
-                } else {
-                    if (verbose) fprintf(stderr, "No down-key support for application %s.\n", name);
-                }
-            }
-
-            if (wmote.keys.right) {
-                if (strcasestr(name, "firefox") == name) {              // Next Tab
-                    XKeycode(XK_Page_Down, ControlMask);
-                } else if (strcasestr(name, "opera") == name) {
-                    XKeycode(XK_F6, ControlMask);
-                } else if (strcasestr(name, "yelp") == name) {
-                    XKeycode(XK_Right, Mod1Mask);
-                } else if (strcasestr(name, "pidgin") == name) {
-                    XKeycode(XK_Tab, ControlMask);
-                } else if (strcasestr(name, "evince") == name) {        // Next Slide
-                    XKeycode(XK_Page_Down, 0);
-                } else if (strcasestr(name, "openoffice") == name ||
-                           strcasestr(name, "soffice") == name) {
-                    XKeycode(XK_Page_Down, 0);
-                } else if (strcasestr(name, "gqview") == name) {
-                    XKeycode(XK_Page_Down, 0);
-                } else if (strcasestr(name, "qiv") == name) {
-                    XKeycode(XK_space, 0);
-                } else if (strcasestr(name, "eog") == name) {
-                    XKeycode(XK_Right, 0);
-                } else if (strcasestr(name, "xpdf") == name) {
-                    XKeycode(XK_n, 0);
-                } else if (strcasestr(name, "acroread") == name) {
-                    XKeycode(XK_Page_Down, 0);
-                } else if (strcasestr(name, "rhythmbox") == name) {     // Next Song
-                    XKeycode(XK_Right, Mod1Mask);
-                } else if (strcasestr(name, "tvtime") == name) {        // Next Channel
-                    XKeycode(XK_Up, 0);
-                } else if (strcasestr(name, "totem") == name) {
-                    XKeycode(XK_Right, 0);
-                } else if (strcasestr(name, "vlc") == name) {           // Skip Forward
-                    XKeycode(XK_Right, Mod1Mask);
-                } else if (strcasestr(name, "mplayer") == name) {
-                    XKeycode(XK_Right, 0);
-                } else if (strcasestr(name, "xine") == name) {
-                    XKeycode(XK_Right, ControlMask);
-                } else if (strcasestr(name, "nautilus") == name) {
-                    XKeycode(XK_Right, 0);
-                } else {
-                    if (verbose) fprintf(stderr, "No right-key support for application %s.\n", name);
-                }
-            }
-
-            if (wmote.keys.left) {
-                if (strcasestr(name, "firefox") == name) {              // Previous Tab
-                    XKeycode(XK_Page_Up, ControlMask);
-                } else if (strcasestr(name, "opera") == name) {
-                    XKeycode(XK_F6, ControlMask | ShiftMask);
-                } else if (strcasestr(name, "yelp") == name) {
-                    XKeycode(XK_Left, Mod1Mask);
-                } else if (strcasestr(name, "pidgin") == name) {
-                    XKeycode(XK_Tab, ControlMask | ShiftMask);
-                } else if (strcasestr(name, "evince") == name) {        // Previous Slide
-                    XKeycode(XK_Page_Up, 0);
-                } else if (strcasestr(name, "openoffice") == name ||
-                           strcasestr(name, "soffice") == name) {
-                    XKeycode(XK_Page_Up, 0);
-                } else if (strcasestr(name, "gqview") == name) {
-                    XKeycode(XK_Page_Up, 0);
-                } else if (strcasestr(name, "qiv") == name) {
-                    XKeycode(XK_BackSpace, 0);
-                } else if (strcasestr(name, "eog") == name) {
-                    XKeycode(XK_Left, 0);
-                } else if (strcasestr(name, "xpdf") == name) {
-                    XKeycode(XK_p, 0);
-                } else if (strcasestr(name, "acroread") == name) {
-                    XKeycode(XK_Page_Up, 0);
-                } else if (strcasestr(name, "rhythmbox") == name) {    // Previous Song
-                    XKeycode(XK_Left, Mod1Mask);
-                } else if (strcasestr(name, "tvtime") == name) {       // Previous Channel
-                    XKeycode(XK_Down, 0);
-                } else if (strcasestr(name, "totem") == name) {
-                    XKeycode(XK_Left, 0);
-                } else if (strcasestr(name, "vlc") == name) {          // Skip Backward
-                    XKeycode(XK_Left, Mod1Mask);
-                } else if (strcasestr(name, "mplayer") == name) {
-                    XKeycode(XK_Left, 0);
-                } else if (strcasestr(name, "xine") == name) {
-                    XKeycode(XK_Left, ControlMask);
-                } else if (strcasestr(name, "nautilus") == name) {
-                    XKeycode(XK_Left, 0);
-                } else {
-                    if (verbose) fprintf(stderr, "No left-key support for application %s.\n", name);
-                }
-            }
-
-            if (wmote.keys.minus) {
-                if (strcasestr(name, "firefox") == name) {              // Zoom Out
-                    XKeycode(XK_minus, ControlMask);
-                } else if (strcasestr(name, "opera") == name) {
-                    XKeycode(XK_minus, 0);
-                } else if (strcasestr(name, "xterm") == name) {
-                    XKeycode(XK_KP_Subtract, ShiftMask);
-                } else if (strcasestr(name, "tvtime") == name) {
-                    XKeycode(XK_KP_Subtract, 0);                    // Volume Down
-                } else if (strcasestr(name, "totem") == name) {
-                    XKeycode(XK_Down, 0);
-                } else if (strcasestr(name, "vlc") == name) {
-                    XKeycode(XK_Down, ControlMask);
-                } else if (strcasestr(name, "xine") == name) {
-                    XKeycode(XK_v, 0);
-                } else if (strcasestr(name, "mplayer") == name) {
-                    XKeycode(XK_9, ShiftMask);
-                } else {
-                    XKeycode(XF86XK_AudioLowerVolume, 0);
-                }
-            }
-
-            if (wmote.keys.plus) {
-                if (strcasestr(name, "firefox") == name) {              // Zoom In
-                    XKeycode(XK_plus, ControlMask);
-                } else if (strcasestr(name, "opera") == name) {
-                    XKeycode(XK_plus, 0);
-                } else if (strcasestr(name, "xterm") == name) {
-                    XKeycode(XK_KP_Add, ShiftMask);
-                } else if (strcasestr(name, "tvtime") == name) {
-                    XKeycode(XK_KP_Add, 0);                         // Volume Up
-                } else if (strcasestr(name, "totem") == name) {
-                    XKeycode(XK_Up, 0); 
-                } else if (strcasestr(name, "vlc") == name) {
-                    XKeycode(XK_Up, ControlMask);
-                } else if (strcasestr(name, "xine") == name) {
-                    XKeycode(XK_V, ShiftMask);
-                } else if (strcasestr(name, "mplayer") == name) {
-                    XKeycode(XK_0, ShiftMask);
-                } else {
-                    XKeycode(XF86XK_AudioRaiseVolume, 0);
-                }
-            }
-
-        }
-
-        // Save the keys state for next run
-        keys = wmote.keys.bits;
-    }
-    XCloseDisplay(display);
+    } while(reconnect);
 
     return 0;
 }
