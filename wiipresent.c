@@ -545,8 +545,12 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Page_Up, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_Page_Up, ShiftMask);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_Page_Up, ShiftMask);
                     } else if (strcasestr(name, "rhythmbox") == name) {
                         XKeycode(XK_Page_Up, 0);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_i, 0); // Change input source
                     }
                 }
 
@@ -557,6 +561,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     } else if (strcasestr(name, "opera") == name) {
                         XKeycode(XK_Page_Down, 0);
                     } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_Page_Down, ShiftMask);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
                         XKeycode(XK_Page_Down, ShiftMask);
                     } else if (strcasestr(name, "rhythmbox") == name) {
                         XKeycode(XK_Page_Down, 0);
@@ -700,7 +706,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_space, 0);
                     } else if (strcasestr(name, "tvtime") == name) {
-                        XKeycode(XK_i, 0); // Change input source
+                        XKeycode(XK_Return, 0); // Channel info
                     } else if (strcasestr(name, "qiv") == name) {
                         XKeycode(XK_m, 0);  // Maximize
                     } else if (strcasestr(name, "nautilus") == name) {
