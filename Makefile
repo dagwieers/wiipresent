@@ -36,10 +36,10 @@ clean:
 
 dist: clean
 	$(MAKE) -C docs dist
-	find . -type f ! -wholename '*/.svn*' | pax -d -w -x ustar -s ,^\./,$(name)-$(version)/, | bzip2 >../$(name)-$(version).tar.bz2
+	svn list -R | pax -d -w -x ustar -s ,^,$(name)-$(version)/, | bzip2 >../$(name)-$(version).tar.bz2
 
 rpm: dist
-	rpmbuild -tb --clean --rmsource --rmspec --define "_rpmfilename %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm" --define "_rpmdir ../" --define "_srpmdir ../" --define "debug_package %nil" ../$(name)-$(version).tar.bz2
+	rpmbuild -tb --clean --rmspec --define "_rpmfilename %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm" --define "_rpmdir ../" --define "_srpmdir ../" --define "debug_package %nil" ../$(name)-$(version).tar.bz2
 
 srpm: dist
-	rpmbuild -ts --clean --rmsource --rmspec --define "_rpmfilename %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm" --define "_srcrpmdir ../" --define "debug_package %nil" ../$(name)-$(version).tar.bz2
+	rpmbuild -ts --clean --rmspec --define "_rpmfilename %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm" --define "_srcrpmdir ../" --define "debug_package %nil" ../$(name)-$(version).tar.bz2

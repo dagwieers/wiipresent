@@ -409,9 +409,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
         int oldbattery = 0;
         Window oldwindow = window;
-        int playertoggle = False;
         int fullscreentoggle = False;
         int screensavertoggle = False;
+        int fileviewtoggle = False;
         int leftmousebutton = False;
         int rightmousebutton = False;
 
@@ -541,16 +541,16 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 if (wmote.keys.up) {
                     if (strcasestr(name, "firefox") == name) {
                         XKeycode(XK_Page_Up, 0);
-                    } else if (strcasestr(name, "opera") == name) {
-                        XKeycode(XK_Page_Up, 0);
-                    } else if (strcasestr(name, "xterm") == name) {
-                        XKeycode(XK_Page_Up, ShiftMask);
                     } else if (strcasestr(name, "gnome-terminal") == name) {
                         XKeycode(XK_Page_Up, ShiftMask);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_Page_Up, 0);
                     } else if (strcasestr(name, "rhythmbox") == name) {
                         XKeycode(XK_Page_Up, 0);
                     } else if (strcasestr(name, "tvtime") == name) {
                         XKeycode(XK_i, 0); // Change input source
+                    } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_Page_Up, ShiftMask);
                     }
                 }
 
@@ -558,14 +558,14 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 if (wmote.keys.down) {
                     if (strcasestr(name, "firefox") == name) {
                         XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_Page_Down, ShiftMask);
                     } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "rhythmbox") == name) {
                         XKeycode(XK_Page_Down, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_Page_Down, ShiftMask);
-                    } else if (strcasestr(name, "gnome-terminal") == name) {
-                        XKeycode(XK_Page_Down, ShiftMask);
-                    } else if (strcasestr(name, "rhythmbox") == name) {
-                        XKeycode(XK_Page_Down, 0);
                     }
                 }
 
@@ -650,24 +650,24 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
                 // Go home/back
                 if (wmote.keys.home) {
-                    if (strcasestr(name, "firefox") == name) {
+                    if (strcasestr(name, "acroread") == name) {
                         XKeycode(XK_Home, 0);
-                    } else if (strcasestr(name, "yelp") == name) {
-                        XKeycode(XK_Home, 0);
-                    } else if (strcasestr(name, "opera") == name) {
+                    } else if (strcasestr(name, "eog") == name) {
                         XKeycode(XK_Home, 0);
                     } else if (strcasestr(name, "evince") == name) {
                         XKeycode(XK_Home, ControlMask);
-                    } else if (strcasestr(name, "eog") == name) {
-                        XKeycode(XK_Home, 0);
-                    } else if (strcasestr(name, "xpdf") == name) {
-                        XKeycode(XK_Home, ControlMask);
-                    } else if (strcasestr(name, "acroread") == name) {
+                    } else if (strcasestr(name, "firefox") == name) {
                         XKeycode(XK_Home, 0);
                     } else if (strcasestr(name, "nautilus") == name) {
                         XKeycode(XK_BackSpace, ShiftMask);
                     } else if (strcasestr(name, "openoffice") == name ||
                                strcasestr(name, "soffice") == name) {
+                        XKeycode(XK_Home, 0);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_Home, 0);
+                    } else if (strcasestr(name, "xpdf") == name) {
+                        XKeycode(XK_Home, ControlMask);
+                    } else if (strcasestr(name, "yelp") == name) {
                         XKeycode(XK_Home, 0);
                     } else {
                         if (verbose) fprintf(stderr, "No home-key support for application %s.\n", name);
@@ -676,105 +676,116 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
                 // Next slide/page, play/pause, enter
                 if (wmote.keys.a) {
-                    if (strcasestr(name, "firefox") == name) {
-                        XKeycode(XK_Return, 0);
-                    } else if (strcasestr(name, "yelp") == name) {
-                        XKeycode(XK_Return, 0);
-                    } else if (strcasestr(name, "opera") == name) {
-                        XKeycode(XK_Return, 0);
+                    if (strcasestr(name, "acroread") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "eog") == name) {
+                        XKeycode(XK_Right, 0);
                     } else if (strcasestr(name, "evince") == name) {
                         XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_Return, 0);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_Return, 0);
+                    } else if (strcasestr(name, "gqview") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "gxine") == name) {
+                        XKeycode(XK_space, 0);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_p, 0);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_Return, ShiftMask);
                     } else if (strcasestr(name, "openoffice") == name ||
                                strcasestr(name, "soffice") == name) {
                         XKeycode(XK_Page_Down, 0);
-                    } else if (strcasestr(name, "gqview") == name) {
-                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_Return, 0);
                     } else if (strcasestr(name, "qiv") == name) {
-                        XKeycode(XK_space, 0);
-                    } else if (strcasestr(name, "eog") == name) {
-                        XKeycode(XK_Right, 0);
-                    } else if (strcasestr(name, "xpdf") == name) {
-                        XKeycode(XK_n, 0);
-                    } else if (strcasestr(name, "acroread") == name) {
-                        XKeycode(XK_Page_Down, 0);
+//                        XKeycode(XK_space, 0);
+                        XKeycode(XK_m, 0);  // Maximize
                     } else if (strcasestr(name, "rhythmbox") == name) {
                         XKeycode(XK_space, ControlMask); 
-                    } else if (strcasestr(name, "mplayer") == name) {
+                    } else if (strcasestr(name, "totem") == name) {
                         XKeycode(XK_p, 0);
-                    } else if (strcasestr(name, "gxine") == name) {
-                        XKeycode(XK_space, 0);
-                    } else if (strcasestr(name, "xine") == name) {
-                        XKeycode(XK_space, 0);
                     } else if (strcasestr(name, "tvtime") == name) {
                         XKeycode(XK_Return, 0); // Channel info
-                    } else if (strcasestr(name, "qiv") == name) {
-                        XKeycode(XK_m, 0);  // Maximize
-                    } else if (strcasestr(name, "nautilus") == name) {
-                        XKeycode(XK_Return, ShiftMask);
+                    } else if (strcasestr(name, "xine") == name) {
+                        XKeycode(XK_space, 0);
+                    } else if (strcasestr(name, "xpdf") == name) {
+                        XKeycode(XK_n, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_Return, 0);
-                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                    } else if (strcasestr(name, "yelp") == name) {
                         XKeycode(XK_Return, 0);
                     } else {
 //                        if (verbose) fprintf(stderr, "No A-key support for application %s.\n", name);
                         XKeycode(XK_Return, 0);
                     }
-                    playertoggle = ! playertoggle;
                 }
 
                 // Fullscreen
                 if (wmote.keys.one) {
-                    if (strcasestr(name, "firefox") == name) {
-                        XKeycode(XK_F11, 0);
-                    } else if (strcasestr(name, "opera") == name) {
+                    if (strcasestr(name, "acroread") == name) {
+                        XKeycode(XK_L, ControlMask);
+                    } else if (strcasestr(name, "eog") == name) {
                         XKeycode(XK_F11, 0);
                     } else if (strcasestr(name, "evince") == name) {
                         XKeycode(XK_F5, 0);
+                    } else if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_F11, 0);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_F11, 0);
+                    } else if (strcasestr(name, "gqview") == name) {
+                        XKeycode(XK_F, 0);
+                    } else if (strcasestr(name, "gxine") == name) {
+                        XKeycode(XK_f, ControlMask);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_f, 0);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        if ( (fullscreentoggle = ! fullscreentoggle ) )
+                            XKeycode(XK_F5, Mod1Mask);
+                        else
+                            XKeycode(XK_F10, Mod1Mask);
                     } else if (strcasestr(name, "openoffice") == name ||
                                strcasestr(name, "soffice") == name) {
-                        if (fullscreentoggle)
+                        if ( (fullscreentoggle = ! fullscreentoggle ) )
                             XKeycode(XK_Escape, 0);
                         else
                             XKeycode(XK_F9, 0);
-                    } else if (strcasestr(name, "gqview") == name) {
-                        XKeycode(XK_F, 0);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_F11, 0);
                     } else if (strcasestr(name, "qiv") == name) {
                         XKeycode(XK_f, 0);
-                    } else if (strcasestr(name, "eog") == name) {
-                        XKeycode(XK_F11, 0);
-                    } else if (strcasestr(name, "xpdf") == name) {
-                        XKeycode(XK_F, Mod1Mask);
-                    } else if (strcasestr(name, "acroread") == name) {
-                        XKeycode(XK_L, ControlMask);
                     } else if (strcasestr(name, "rhythmbox") == name) {
                         XKeycode(XK_F11, 0);
-                    } else if (strcasestr(name, "tvtime") == name) {
-                        XKeycode(XK_f, 0);
                     } else if (strcasestr(name, "totem") == name) {
                         XKeycode(XK_f, 0);
-                    } else if (strcasestr(name, "mplayer") == name) {
+                    } else if (strcasestr(name, "tvtime") == name) {
                         XKeycode(XK_f, 0);
                     } else if (strcasestr(name, "vlc") == name) {
                         XKeycode(XK_f, 0);
-                    } else if (strcasestr(name, "gxine") == name) {
-                        XKeycode(XK_f, ControlMask);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_f, 0);
-                    } else if (strcasestr(name, "gnome-terminal") == name) {
-                        XKeycode(XK_F11, 0);
+                    } else if (strcasestr(name, "xpdf") == name) {
+                        XKeycode(XK_F, Mod1Mask);
                     } else {
                         if (verbose) fprintf(stderr, "No one-key support for application %s.\n", name);
                     }
-                    fullscreentoggle = ! fullscreentoggle;
                 }
 
-                // change screen ratio
+                // change aspect ratio
                 if (wmote.keys.two) {
-                    if (strcasestr(name, "tvtime") == name) {
+                    if (strcasestr(name, "gxine") == name) {
                         XKeycode(XK_a, 0);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        if ( (fileviewtoggle = ! fileviewtoggle) )
+                            XKeycode(XK_1, ControlMask | ShiftMask);
+                        else
+                            XKeycode(XK_2, ControlMask | ShiftMask);
+                    } else if (strcasestr(name, "rhythmbox") == name) {
+                        XKeycode(XK_u, ControlMask); // Toggle random
                     } else if (strcasestr(name, "totem") == name) {
                         XKeycode(XK_a, 0);
-                    } else if (strcasestr(name, "gxine") == name) {
+                    } else if (strcasestr(name, "tvtime") == name) {
                         XKeycode(XK_a, 0);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_a, 0);
@@ -785,42 +796,41 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
                 // Scroll up, volume up, rotate
                 if (wmote.keys.up) {
-                    if (strcasestr(name, "firefox") == name) {
+                    if (strcasestr(name, "eog") == name) {
+                        XKeycode(XK_r, ControlMask);
+                    } else if (strcasestr(name, "firefox") == name) {
                         XKeycode(XK_Tab, ShiftMask);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_Up, 0);
+                    } else if (strcasestr(name, "gqview") == name) {
+                        XKeycode(XK_bracketright, 0); // FIXME: This does not work
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_0, ShiftMask);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_Up, 0);
                     } else if (strcasestr(name, "opera") == name) {
                         XKeycode(XK_Up, ControlMask);
-                    } else if (strcasestr(name, "yelp") == name) {
-                        XKeycode(XK_Tab, ShiftMask);
                     } else if (strcasestr(name, "pidgin") == name) {
                         XKeycode(XK_Page_Up, 0);
                     } else if (strcasestr(name, "openoffice") == name ||
                                strcasestr(name, "soffice") == name) {
                         XKeycode(XK_Page_Up, Mod1Mask);
+                    } else if (strcasestr(name, "qiv") == name) {
+                        XKeycode(XK_k, 0);
                     } else if (strcasestr(name, "rhythmbox") == name) {
-                        XKeycode(XF86XK_AudioRaiseVolume, 0);
-//                        XKeycode(XK_Up, ControlMask);
-                    } else if (strcasestr(name, "tvtime") == name) {
-                        XKeycode(XK_KP_Add, 0);
+                        XKeycode(XK_Up, ControlMask);
                     } else if (strcasestr(name, "totem") == name) {
                         XKeycode(XK_Up, 0);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_KP_Add, 0);
                     } else if (strcasestr(name, "vlc") == name) {
                         XKeycode(XK_Up, ControlMask);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_V, ShiftMask);
-                    } else if (strcasestr(name, "mplayer") == name) {
-                        XKeycode(XK_0, ShiftMask);
-                    } else if (strcasestr(name, "gqview") == name) {
-                        XKeycode(XK_bracketright, 0); // FIXME: This does not work
-                    } else if (strcasestr(name, "qiv") == name) {
-                        XKeycode(XK_k, 0);
-                    } else if (strcasestr(name, "eog") == name) {
-                        XKeycode(XK_r, ControlMask);
-                    } else if (strcasestr(name, "nautilus") == name) {
-                        XKeycode(XK_Up, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_Up, 0);
-                    } else if (strcasestr(name, "gnome-terminal") == name) {
-                        XKeycode(XK_Up, 0);
+                    } else if (strcasestr(name, "yelp") == name) {
+                        XKeycode(XK_Tab, ShiftMask);
                     } else {
 //                        if (verbose) fprintf(stderr, "No up-key for application %s.\n", name);
                         XKeycode(XK_Up, 0);
@@ -829,42 +839,41 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
                 // Scroll down, volume down, rotate back, cursor down
                 if (wmote.keys.down) {
-                    if (strcasestr(name, "firefox") == name) {
+                    if (strcasestr(name, "eog") == name) {
+                        XKeycode(XK_r, ShiftMask | ControlMask); // FIXME: No key in eog for rotating counter clockwise ?
+                    } else if (strcasestr(name, "firefox") == name) {
                         XKeycode(XK_Tab, 0);
-                    } else if (strcasestr(name, "opera") == name) {
-                        XKeycode(XK_Down, ControlMask);
-                    } else if (strcasestr(name, "yelp") == name) {
-                        XKeycode(XK_Tab, 0);
-                    } else if (strcasestr(name, "pidgin") == name) {
-                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_Down, 0);
+                    } else if (strcasestr(name, "gqview") == name) {
+                        XKeycode(XK_bracketleft, 0); // FIXME: This does not work
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_9, ShiftMask);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_Down, 0);
                     } else if (strcasestr(name, "openoffice") == name ||
                                strcasestr(name, "soffice") == name) {
                         XKeycode(XK_Page_Down, Mod1Mask);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_Down, ControlMask);
+                    } else if (strcasestr(name, "pidgin") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "qiv") == name) {
+                        XKeycode(XK_l, 0);
                     } else if (strcasestr(name, "rhythmbox") == name) {
-                        XKeycode(XF86XK_AudioLowerVolume, 0);
-//                        XKeycode(XK_Down, ControlMask);
-                    } else if (strcasestr(name, "tvtime") == name) {
-                        XKeycode(XK_KP_Subtract, 0);
+                        XKeycode(XK_Down, ControlMask);
                     } else if (strcasestr(name, "totem") == name) {
                         XKeycode(XK_Down, 0);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_KP_Subtract, 0);
                     } else if (strcasestr(name, "vlc") == name) {
                         XKeycode(XK_Down, ControlMask);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_v, 0);
-                    } else if (strcasestr(name, "mplayer") == name) {
-                        XKeycode(XK_9, ShiftMask);
-                    } else if (strcasestr(name, "gqview") == name) {
-                        XKeycode(XK_bracketleft, 0); // FIXME: This does not work
-                    } else if (strcasestr(name, "qiv") == name) {
-                        XKeycode(XK_l, 0);
-                    } else if (strcasestr(name, "eog") == name) {
-                        XKeycode(XK_r, ShiftMask | ControlMask); // FIXME: No key in eog for rotating counter clockwise ?
-                    } else if (strcasestr(name, "nautilus") == name) {
-                        XKeycode(XK_Down, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_Down, 0);
-                    } else if (strcasestr(name, "gnome-terminal") == name) {
-                        XKeycode(XK_Down, 0);
+                    } else if (strcasestr(name, "yelp") == name) {
+                        XKeycode(XK_Tab, 0);
                     } else {
 //                        if (verbose) fprintf(stderr, "No down-key support for application %s.\n", name);
                         XKeycode(XK_Down, 0);
@@ -873,49 +882,49 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
                 // Next tab/slide/song/channel, skip firward, cursor right
                 if (wmote.keys.right) {
-                    if (strcasestr(name, "firefox") == name) {
-                        XKeycode(XK_Page_Down, ControlMask);
-                    } else if (strcasestr(name, "opera") == name) {
-                        XKeycode(XK_F6, ControlMask);
-                    } else if (strcasestr(name, "yelp") == name) {
-                        XKeycode(XK_Right, Mod1Mask);
-                    } else if (strcasestr(name, "pidgin") == name) {
-                        XKeycode(XK_Tab, ControlMask);
+                    if (strcasestr(name, "acroread") == name) {
+                        XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "eog") == name) {
+                        XKeycode(XK_Right, 0);
                     } else if (strcasestr(name, "evince") == name) {
                         XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_Page_Down, ControlMask);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "gxine") == name) {
+                        XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_Right, 0);
                     } else if (strcasestr(name, "openoffice") == name ||
                                strcasestr(name, "soffice") == name) {
                         XKeycode(XK_Page_Down, 0);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_F6, ControlMask);
+                    } else if (strcasestr(name, "pidgin") == name) {
+                        XKeycode(XK_Tab, ControlMask);
                     } else if (strcasestr(name, "gqview") == name) {
                         XKeycode(XK_Page_Down, 0);
                     } else if (strcasestr(name, "qiv") == name) {
                         XKeycode(XK_space, 0);
-                    } else if (strcasestr(name, "eog") == name) {
-                        XKeycode(XK_Right, 0);
-                    } else if (strcasestr(name, "xpdf") == name) {
-                        XKeycode(XK_n, 0);
-                    } else if (strcasestr(name, "acroread") == name) {
-                        XKeycode(XK_Page_Down, 0);
                     } else if (strcasestr(name, "rhythmbox") == name) {
                         XKeycode(XK_Right, Mod1Mask);
-                    } else if (strcasestr(name, "tvtime") == name) {
-                        XKeycode(XK_Up, 0);
                     } else if (strcasestr(name, "totem") == name) {
                         XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_Up, 0);
                     } else if (strcasestr(name, "vlc") == name) {
                         XKeycode(XK_Right, Mod1Mask);
-                    } else if (strcasestr(name, "mplayer") == name) {
-                        XKeycode(XK_Right, 0);
-                    } else if (strcasestr(name, "gxine") == name) {
-                        XKeycode(XK_Right, 0);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_Right, ControlMask);
-                    } else if (strcasestr(name, "nautilus") == name) {
-                        XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "xpdf") == name) {
+                        XKeycode(XK_n, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_Right, 0);
-                    } else if (strcasestr(name, "gnome-terminal") == name) {
-                        XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "yelp") == name) {
+                        XKeycode(XK_Right, Mod1Mask);
                     } else {
 //                        if (verbose) fprintf(stderr, "No right-key support for application %s.\n", name);
                         XKeycode(XK_Right, 0);
@@ -924,49 +933,49 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
                 // Previous tab/slide/song/channel, skip backward
                 if (wmote.keys.left) {
-                    if (strcasestr(name, "firefox") == name) {
-                        XKeycode(XK_Page_Up, ControlMask);
-                    } else if (strcasestr(name, "opera") == name) {
-                        XKeycode(XK_F6, ControlMask | ShiftMask);
-                    } else if (strcasestr(name, "yelp") == name) {
-                        XKeycode(XK_Left, Mod1Mask);
-                    } else if (strcasestr(name, "pidgin") == name) {
-                        XKeycode(XK_Tab, ControlMask | ShiftMask);
+                    if (strcasestr(name, "acroread") == name) {
+                        XKeycode(XK_Page_Up, 0);
+                    } else if (strcasestr(name, "eog") == name) {
+                        XKeycode(XK_Left, 0);
                     } else if (strcasestr(name, "evince") == name) {
                         XKeycode(XK_Page_Up, 0);
+                    } else if (strcasestr(name, "firefox") == name) {
+                        XKeycode(XK_Page_Up, ControlMask);
+                    } else if (strcasestr(name, "gnome-terminal") == name) {
+                        XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "gqview") == name) {
+                        XKeycode(XK_Page_Up, 0);
+                    } else if (strcasestr(name, "gxine") == name) {
+                        XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_Left, 0);
                     } else if (strcasestr(name, "openoffice") == name ||
                                strcasestr(name, "soffice") == name) {
                         XKeycode(XK_Page_Up, 0);
-                    } else if (strcasestr(name, "gqview") == name) {
-                        XKeycode(XK_Page_Up, 0);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_F6, ControlMask | ShiftMask);
+                    } else if (strcasestr(name, "pidgin") == name) {
+                        XKeycode(XK_Tab, ControlMask | ShiftMask);
                     } else if (strcasestr(name, "qiv") == name) {
                         XKeycode(XK_BackSpace, 0);
-                    } else if (strcasestr(name, "eog") == name) {
-                        XKeycode(XK_Left, 0);
-                    } else if (strcasestr(name, "xpdf") == name) {
-                        XKeycode(XK_p, 0);
-                    } else if (strcasestr(name, "acroread") == name) {
-                        XKeycode(XK_Page_Up, 0);
                     } else if (strcasestr(name, "rhythmbox") == name) {
                         XKeycode(XK_Left, Mod1Mask);
-                    } else if (strcasestr(name, "tvtime") == name) {
-                        XKeycode(XK_Down, 0);
                     } else if (strcasestr(name, "totem") == name) {
                         XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_Down, 0);
                     } else if (strcasestr(name, "vlc") == name) {
                         XKeycode(XK_Left, Mod1Mask);
-                    } else if (strcasestr(name, "mplayer") == name) {
-                        XKeycode(XK_Left, 0);
-                    } else if (strcasestr(name, "gxine") == name) {
-                        XKeycode(XK_Left, 0);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_Left, ControlMask);
-                    } else if (strcasestr(name, "nautilus") == name) {
-                        XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "xpdf") == name) {
+                        XKeycode(XK_p, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_Left, 0);
-                    } else if (strcasestr(name, "gnome-terminal") == name) {
-                        XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "yelp") == name) {
+                        XKeycode(XK_Left, Mod1Mask);
                     } else {
 //                        if (verbose) fprintf(stderr, "No left-key support for application %s.\n", name);
                         XKeycode(XK_Left, 0);
@@ -977,12 +986,16 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 if (wmote.keys.minus) {
                     if (strcasestr(name, "firefox") == name) {
                         XKeycode(XK_minus, ControlMask);
-                    } else if (strcasestr(name, "opera") == name) {
-                        XKeycode(XK_minus, 0);
-                    } else if (strcasestr(name, "xterm") == name) {
-                        XKeycode(XK_KP_Subtract, ShiftMask);
                     } else if (strcasestr(name, "gnome-terminal") == name) {
                         XKeycode(XK_minus, ControlMask);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_9, ShiftMask);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_minus, ControlMask);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_minus, 0);
+                    } else if (strcasestr(name, "rhythmbox") == name) {
+                        XKeycode(XK_Down, ControlMask);
                     } else if (strcasestr(name, "tvtime") == name) {
                         XKeycode(XK_KP_Subtract, 0);
                     } else if (strcasestr(name, "totem") == name) {
@@ -991,8 +1004,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Down, ControlMask);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_v, 0);
-                    } else if (strcasestr(name, "mplayer") == name) {
-                        XKeycode(XK_9, ShiftMask);
+                    } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_KP_Subtract, ShiftMask);
                     } else {
                         XKeycode(XF86XK_AudioLowerVolume, 0);
                     }
@@ -1002,22 +1015,26 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 if (wmote.keys.plus) {
                     if (strcasestr(name, "firefox") == name) {
                         XKeycode(XK_plus, ControlMask);
-                    } else if (strcasestr(name, "opera") == name) {
-                        XKeycode(XK_plus, 0);
-                    } else if (strcasestr(name, "xterm") == name) {
-                        XKeycode(XK_KP_Add, ShiftMask);
                     } else if (strcasestr(name, "gnome-terminal") == name) {
                         XKeycode(XK_plus, ShiftMask | ControlMask);
-                    } else if (strcasestr(name, "tvtime") == name) {
-                        XKeycode(XK_KP_Add, 0);
+                    } else if (strcasestr(name, "mplayer") == name) {
+                        XKeycode(XK_0, ShiftMask);
+                    } else if (strcasestr(name, "nautilus") == name) {
+                        XKeycode(XK_plus, ControlMask);
+                    } else if (strcasestr(name, "opera") == name) {
+                        XKeycode(XK_plus, 0);
+                    } else if (strcasestr(name, "rhythmbox") == name) {
+                        XKeycode(XK_Up, ControlMask);
                     } else if (strcasestr(name, "totem") == name) {
                         XKeycode(XK_Up, 0); 
+                    } else if (strcasestr(name, "tvtime") == name) {
+                        XKeycode(XK_KP_Add, 0);
                     } else if (strcasestr(name, "vlc") == name) {
                         XKeycode(XK_Up, ControlMask);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_V, ShiftMask);
-                    } else if (strcasestr(name, "mplayer") == name) {
-                        XKeycode(XK_0, ShiftMask);
+                    } else if (strcasestr(name, "xterm") == name) {
+                        XKeycode(XK_KP_Add, ShiftMask);
                     } else {
                         XKeycode(XF86XK_AudioRaiseVolume, 0);
                     }

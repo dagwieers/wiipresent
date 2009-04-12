@@ -13,7 +13,7 @@
 == Ideas
 - Rumble/flash lights when battery low
 - Make sound when presentation is over
-- Record timings and print timestamp + keypress
+- Record timings and print timestamp + keypress for later review
   (follow keypresses so we know on what slide we are too)
 - Report when batteries of IR sensorbar are low
   (calculate distance and compare with dot strength)
