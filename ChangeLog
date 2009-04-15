@@ -3,6 +3,7 @@
 - Check bluetooth address length
 - Handle BadWindow errors by ignoring them :-)
 - Improved the logic for getting a window name
+- Added support for kpresenter, pan and xmms
 
 * 0.7.1 - release 16/03/2009
 - Added support for totem

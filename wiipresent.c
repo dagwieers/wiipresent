@@ -409,9 +409,10 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
         int oldbattery = 0;
         Window oldwindow = window;
-        int fullscreentoggle = False;
-        int screensavertoggle = False;
         int fileviewtoggle = False;
+        int fullscreentoggle = False;
+        int playtoggle = False;
+        int screensavertoggle = False;
         int leftmousebutton = False;
         int rightmousebutton = False;
 
@@ -658,6 +659,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Home, ControlMask);
                     } else if (strcasestr(name, "firefox") == name) {
                         XKeycode(XK_Home, 0);
+                    } else if (strcasestr(name, "kpresenter") == name) {
+                        XKeycode(XK_Home, 0);
                     } else if (strcasestr(name, "nautilus") == name) {
                         XKeycode(XK_BackSpace, ShiftMask);
                     } else if (strcasestr(name, "openoffice") == name ||
@@ -690,6 +693,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Page_Down, 0);
                     } else if (strcasestr(name, "gxine") == name) {
                         XKeycode(XK_space, 0);
+                    } else if (strcasestr(name, "kpresenter") == name) {
+                        XKeycode(XK_Page_Down, 0);
                     } else if (strcasestr(name, "mplayer") == name) {
                         XKeycode(XK_p, 0);
                     } else if (strcasestr(name, "nautilus") == name) {
@@ -712,6 +717,11 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_space, 0);
                     } else if (strcasestr(name, "xpdf") == name) {
                         XKeycode(XK_n, 0);
+                    } else if (strcasestr(name, "xmms") == name) {
+                        if ( (playtoggle = ! playtoggle ) )
+                            XKeycode(XK_x, 0);
+                        else
+                            XKeycode(XK_c, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_Return, 0);
                     } else if (strcasestr(name, "yelp") == name) {
@@ -738,6 +748,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_F, 0);
                     } else if (strcasestr(name, "gxine") == name) {
                         XKeycode(XK_f, ControlMask);
+                    } else if (strcasestr(name, "kpresenter") == name) {
+                        XKeycode(XK_F12, 0);
                     } else if (strcasestr(name, "mplayer") == name) {
                         XKeycode(XK_f, 0);
                     } else if (strcasestr(name, "nautilus") == name) {
@@ -765,6 +777,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_f, 0);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_f, 0);
+                    } else if (strcasestr(name, "xmms") == name) {
+                        XKeycode(XK_d, ControlMask);
                     } else if (strcasestr(name, "xpdf") == name) {
                         XKeycode(XK_F, Mod1Mask);
                     } else {
@@ -789,6 +803,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_a, 0);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_a, 0);
+                    } else if (strcasestr(name, "xmms") == name) {
+                        XKeycode(XK_s, 0); // Toggle random
                     } else {
                         if (verbose) fprintf(stderr, "No two-key support for application %s.\n", name);
                     }
@@ -827,6 +843,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Up, ControlMask);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_V, ShiftMask);
+                    } else if (strcasestr(name, "xmms") == name) {
+                        XKeycode(XK_Up, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_Up, 0);
                     } else if (strcasestr(name, "yelp") == name) {
@@ -870,6 +888,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Down, ControlMask);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_v, 0);
+                    } else if (strcasestr(name, "xmms") == name) {
+                        XKeycode(XK_Down, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_Down, 0);
                     } else if (strcasestr(name, "yelp") == name) {
@@ -894,6 +914,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Right, 0);
                     } else if (strcasestr(name, "gxine") == name) {
                         XKeycode(XK_Right, 0);
+                    } else if (strcasestr(name, "kpresenter") == name) {
+                        XKeycode(XK_Page_Down, 0);
                     } else if (strcasestr(name, "mplayer") == name) {
                         XKeycode(XK_Right, 0);
                     } else if (strcasestr(name, "nautilus") == name) {
@@ -903,6 +925,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Page_Down, 0);
                     } else if (strcasestr(name, "opera") == name) {
                         XKeycode(XK_F6, ControlMask);
+                    } else if (strcasestr(name, "pan") == name) {
+                        XKeycode(XK_v, 0);
                     } else if (strcasestr(name, "pidgin") == name) {
                         XKeycode(XK_Tab, ControlMask);
                     } else if (strcasestr(name, "gqview") == name) {
@@ -919,6 +943,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Right, Mod1Mask);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_Right, ControlMask);
+                    } else if (strcasestr(name, "xmms") == name) {
+                        XKeycode(XK_b, 0);
                     } else if (strcasestr(name, "xpdf") == name) {
                         XKeycode(XK_n, 0);
                     } else if (strcasestr(name, "xterm") == name) {
@@ -947,6 +973,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Page_Up, 0);
                     } else if (strcasestr(name, "gxine") == name) {
                         XKeycode(XK_Left, 0);
+                    } else if (strcasestr(name, "kpresenter") == name) {
+                        XKeycode(XK_Page_Up, 0);
                     } else if (strcasestr(name, "mplayer") == name) {
                         XKeycode(XK_Left, 0);
                     } else if (strcasestr(name, "nautilus") == name) {
@@ -956,6 +984,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Page_Up, 0);
                     } else if (strcasestr(name, "opera") == name) {
                         XKeycode(XK_F6, ControlMask | ShiftMask);
+                    } else if (strcasestr(name, "pan") == name) {
+                        XKeycode(XK_n, ControlMask);
                     } else if (strcasestr(name, "pidgin") == name) {
                         XKeycode(XK_Tab, ControlMask | ShiftMask);
                     } else if (strcasestr(name, "qiv") == name) {
@@ -970,6 +1000,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Left, Mod1Mask);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_Left, ControlMask);
+                    } else if (strcasestr(name, "xmms") == name) {
+                        XKeycode(XK_z, 0);
                     } else if (strcasestr(name, "xpdf") == name) {
                         XKeycode(XK_p, 0);
                     } else if (strcasestr(name, "xterm") == name) {
@@ -1004,6 +1036,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Down, ControlMask);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_v, 0);
+                    } else if (strcasestr(name, "xmms") == name) {
+                        XKeycode(XK_Down, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_KP_Subtract, ShiftMask);
                     } else {
@@ -1033,6 +1067,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         XKeycode(XK_Up, ControlMask);
                     } else if (strcasestr(name, "xine") == name) {
                         XKeycode(XK_V, ShiftMask);
+                    } else if (strcasestr(name, "xmms") == name) {
+                        XKeycode(XK_Up, 0);
                     } else if (strcasestr(name, "xterm") == name) {
                         XKeycode(XK_KP_Add, ShiftMask);
                     } else {
