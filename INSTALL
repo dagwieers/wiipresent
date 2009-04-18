@@ -1,0 +1,28 @@
+= wiipresent - Installaiton instructions
+
+== Build requirements
+You need the following libraries in order to build and use wiipresent:
+
+ - Xorg libX11 and libXtst libraries and headers
+ - BlueZ libraries and headers
+ - libwiimote libraries and headers (built with -D_DISABLE_NONBLOCK_UPDATES)
+
+We tried to minimize the dependencies for wiipresent so there is no excuse to
+ship it with every Linux distribution or appliance.
+
+== Building wiipresent
+To build wiipresent, it is sufficient to do:
+
+  $ make
+
+== Installing wiipresent
+Installing wiipresent requires root privilegese, you can simply do:
+
+  $ sudo make install prefix="/usr/local"
+
+== Feedback
+Please provide feedback regarding wiipresent to the following mailinglist:
+
+  tools@lists.rpmforge.net
+
+// vim: set syntax=asciidoc:

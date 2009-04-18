@@ -2,15 +2,15 @@
 .\" It was generated using the DocBook XSL Stylesheets (version 1.69.1).
 .\" Instead of manually editing it, you probably should edit the DocBook XML
 .\" source for it and then use the DocBook XSL Stylesheets to regenerate it.
-.TH "WIIPRESENT" "1" "04/10/2009" "" ""
+.TH "WIIPRESENT" "1" "04/17/2009" "" ""
 .\" disable hyphenation
 .nh
 .\" disable justification (adjust text to left margin only)
 .ad l
 .SH "NAME"
-wiipresent \- tool to control applications using the wiimote
+wiipresent \- tool to control applications using a Nintendo wiimote
 .SH "SYNOPSIS"
-wiipresent [\-v] [\-l length] \-b bluetooth\-address
+wiipresent [\-v] [\-i] [\-l length] [\-t] \-b bluetooth\-address
 .sp
 .SH "DESCRIPTION"
 wiipresent is a tool to control applications using the wiimote. It was originally developed for using the wiimote to give presentations using openoffice or xpdf, but is now turned into a tool to control your mouse and/or other applications.
@@ -67,6 +67,75 @@ Then start wiipresent using the following syntax:
 Please press 1+2 on the wiimote with address 00:1B:7A:F8:B5:64...
 Battery level now is 81%.
 .fi
+.SH "KEY MAPPINGS"
+When you press a button on your Nintendo Wiimote, WiiPresent sends a Key event to the application that has the focus. Depending on the application, the buttons have a different meaning even though there is some consistency to what happens.
+.sp
+Currently the key mappings for each application is hard\-coded in the wiipresent tool, but in the future we plan to make this dynamically configurable so you have more control over the behaviour of your wiimote for your favorite applications.
+.sp
+Since we have a limited number of buttons on a Ninendo Wiimote we are limited in functionality we can map to the application, however to overcome this limitation combinations of keys have a special meaning.
+.sp
+When you press any button, you are using NORMAL mode. If you keep the B button pressed together with other buttons, you are in WINDOW mode. If you press button B and button A together you toggle between MOUSE mode and NORMAL mode.
+.sp
+.SH "NORMAL MODE"
+The following keys are mapped in NORMAL mode, depending on the application that has the focus this may vary.
+.sp
+.TP
+Left/Right buttons
+change slide, change channel, change tab
+.TP
+Up/Down buttons
+change volume, change links
+.TP
+\fI\-\fR/\fI+\fR buttons
+change volume, zoom out/in
+.TP
+\fIA\fR button
+toggle play/pause, change source
+.TP
+\fI1\fR button
+toggle fullscreen
+.TP
+\fI2\fR button
+change aspect ratio
+.TP
+\fIhome\fR button
+go back, home key
+.TP
+\fIexit\fR button
+exit wiipresent (not implemented yet due to libwiimote bug)
+.SH "WINDOW MODE"
+The following keys are mapped in WINDOW mode, depending on the application that has the focus this may vary. \fBThe B button is pressed together with the buttons below.\fR
+.sp
+.TP
+Up/Down buttons
+scroll up/down
+.TP
+Left/Right buttons
+switch between applications (window manager)
+.TP
+\fI\-\fR/\fI+\fR buttons
+change workspace
+.TP
+\fIA\fR button
+toggle MOUSE mode
+.TP
+\fI2\fR button
+blank screen, mute audio (censor info)
+.SH "MOUSE MODE"
+The following keys are mapped in MOUSE mode, depending on the application that has the focus this may vary. \fBMOUSE mode is toggled by pressing the \fR\fB\fIA\fR\fR\fB button and \fR\fB\fIB\fR\fR\fB button at the same time.\fR
+.sp
+.TP
+Up/Down buttons
+scroll up/down
+.TP
+Left/Right buttons
+switch between applications
+.TP
+\fI\-\fR/\fI+\fR buttons
+left/right mouse buttons
+.TP
+\fIA\fR button
+left mouse button
 .SH "BUGS"
 This program is free of bugs. Yeah right.
 .sp
@@ -85,6 +154,13 @@ Please see the TODO file for known bugs and future plans.
 .nf
 hcitool(1)
 .fi
+.SH "HISTORY"
+The idea of using the wiimote for giving presentations was devised at LinuxTag 2008 in Berlin and a basic hack (based on WMD) was showcased at LinuxTag the second day at the CentOS booth. It included infrared mouse support and was written by Dag Wieers.
+.sp
+Because we need deadlines for getting anything done, we instantly submitted a paper for FrOSCon 2008 that was selected. And a second hack written in C (using cwiid) implemented tilt mouse support and timely rumbles was showcased at FrOSCon and was written by Geerd\-Dietger Hoffman.
+.sp
+At FOSDEM 2009 the current version was written from scratch at the CentOS booth (in C using libwiimote) and demonstrated before a live audience. Nobody (that we know of) was injured during this demonstration.
+.sp
 .SH "AUTHOR"
 Written by Dag Wieers [1]\&\fIdag@wieers.com\fR
 .sp

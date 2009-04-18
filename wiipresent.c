@@ -37,7 +37,7 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 Status XQueryCommand(Display *display, Window window, char **name);
 
 static char NAME[] = "wiipresent";
-static char VERSION[] = "0.7.1svn";
+static char VERSION[] = "0.7.2";
 
 static char *displayname = NULL;
 static Display *display = NULL;
@@ -155,7 +155,7 @@ int try_property(Display *display, Window window, int property, char **name) {
     return 0;
 }
 
-// Implemented for some apps that return a 'weird' parent window id
+// Implemented for some apps that return a 'weird' parent window id (eg. qiv)
 int try_guessed(Display *display, Window window, char **name) {
     Window guessed = window - window % 0x100000 + 1;
     if (window == guessed)
@@ -169,7 +169,7 @@ int try_guessed(Display *display, Window window, char **name) {
     return 0;
 }
 
-int try_family(Display *display, Window window, char **name) {
+int try_parent(Display *display, Window window, char **name) {
     Window root_window;
     Window parent_window;
     Window *children_window;
@@ -179,21 +179,31 @@ int try_family(Display *display, Window window, char **name) {
         if (parent_window) {
             if (XQueryCommand(display, parent_window, name) != 0) {
                 if (verbose >= 3) fprintf(stderr, "Found application %s using parent window. (0x%08x)\n", *name, (unsigned int) parent_window);
-            } else if (try_family(display, parent_window, name)) {
                 return 1;
             }
         }
-    // FIXME: Try children too without looping !
-/*
+    }
+    return 0;
+}
+
+int try_children(Display *display, Window window, char **name) {
+    Window root_window;
+    Window parent_window;
+    Window *children_window;
+    unsigned int nchildrens;
+
+    if (XQueryTree(display, window, &root_window, &parent_window, &children_window, &nchildrens) != 0) {
         if (nchildrens > 0) {
             int i;
             for (i = 0; i < nchildrens; i++) {
+                fprintf(stderr, "Found child %d as window 0x%08x.\n", i, (unsigned int) children_window[i]);
                 if (XQueryCommand(display, children_window[i], name) != 0) {
                     if (verbose >= 3) fprintf(stderr, "Found application %s using child window (0x%08x).\n", *name, (unsigned int) parent_window);
+                    return 1;
                 }
             }
         }
-*/
+
     }
     return 0;
 }
@@ -222,10 +232,14 @@ Status XQueryCommand(Display *display, Window window, char **name) {
         if (verbose >= 3) fprintf(stderr, "Found application %s (0x%08x) using XA_WM_COMMAND.\n", *name, (unsigned int) window);
     } else if (try_property(display, window, XA_WM_ICON_NAME, name)) {
         if (verbose >= 3) fprintf(stderr, "Found application %s (0x%08x) using XA_WM_ICON_NAME.\n", *name, (unsigned int) window);
+    } else if (try_property(display, window, XA_WM_CLASS, name)) {
+        if (verbose >= 3) fprintf(stderr, "Found application %s (0x%08x) using XA_WM_CLASS.\n", *name, (unsigned int) window);
     } else if (try_guessed(display, window, name)) {
         if (verbose >= 2) fprintf(stderr, "Found application %s using guessed parent window (0x%08x).\n", *name, (unsigned int) (window - window % 0x100000 + 1));
-    } else if (try_family(display, window, name)) {
+    } else if (try_parent(display, window, name)) {
         ;
+//    } else if (try_children(display, window, name)) {
+//        ;
     } else {
         return 0;
     }
@@ -349,18 +363,22 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         }
     }
 
+    // Check bluetooth address
+    // FIXME: Allow for wiimote scanning
+    if (btaddress == NULL) {
+        fprintf(stderr, "%s: Bluetooth address (-b/--bluetooth) is mandatory.\n", NAME);
+        return 1;
+    } else if (strlen(btaddress) != 17) {
+        fprintf(stderr, "%s: Bluetooth address %s has incorrect length.\n", NAME, btaddress);
+        return 1;
+    }
+
     // Obtain the X11 display.
     if (displayname == NULL)
         displayname = getenv("DISPLAY");
 
     if (displayname == NULL)
         displayname = ":0.0";
-
-    // Check bluetooth address
-    if (strlen(btaddress) != 17) {
-        fprintf(stderr, "Bluetooth address %s has incorrect length.\n", btaddress);
-        return 1;
-    }
 
     // Reconnect loop
     do {
@@ -374,8 +392,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         // Wait for 1+2
         if (btaddress == NULL) {
     //        printf("Please press 1+2 on a wiimote in the viscinity...");
-    //        wiimote_connect(&wmote, btaddress);
-            printf("Sorry, you need to provide a bluetooth address using -b/--bluetooth.\n");
+            fprintf(stderr, "%s: Sorry, you need to provide a bluetooth address using -b/--bluetooth.\n", NAME);
             exit(1);
         } else {
             printf("Please press 1+2 on the wiimote with address %s...", btaddress);
@@ -390,7 +407,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         if (tilt)
             fprintf(stderr, "Mouse movement controlled by tilting wiimote.\n");
         else if (infrared)
-            fprintf(stderr, "Mouse movement controlled by infrared using sensor bar. (EXPERIMNTAL)\n");
+            fprintf(stderr, "Mouse movement controlled by infrared using sensor bar. (EXPERIMENTAL)\n");
         else
             fprintf(stderr, "Mouse movement disabled.\n");
 
@@ -438,19 +455,19 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     if (verbose >= 2) fprintf(stderr, "Focus on application %s (0x%08x)\n", name, (unsigned int) window);
                 } else {
                     name = strdup("(unknown)");
-                    fprintf(stderr, "ERROR: Unable to find application name for window 0x%08x\n", (unsigned int) window);
+                    fprintf(stderr, "%s: Unable to find application name for window 0x%08x\n", NAME, (unsigned int) window);
                 }
                 oldwindow = window;
-            }
-
-            if (wiimote_pending(&wmote) == 0) {
-                usleep(10000);
             }
 
             // FIXME: We should reconnect at our own convenience
             if (wiimote_update(&wmote) < 0) {
                 printf("Lost connection.");
                 exit_clean(0);
+            }
+
+            if (wiimote_pending(&wmote) == 0) {
+                usleep(10000);
             }
 
             // Check battery change
@@ -492,7 +509,6 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
             // Inside the mouse functionality
             if (mousemode) {
-
                 // Tilt method
                 if (tilt) {
                     XMovePointer(display, wmote.tilt.x / 4, wmote.tilt.y / 4, 1);
@@ -519,7 +535,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         if (tilt) {
                             if (verbose >= 1) fprintf(stderr, "Tilt sensors enabled.\n");
                         } else if (infrared) {
-                            if (verbose >= 1) fprintf(stderr, "Infrared camera enabled.\n");
+                            if (verbose >= 1) fprintf(stderr, "Infrared camera enabled. (NOT IMPLEMENTED YET)\n");
                             wmote.mode.ir = 1;
                         }
                         // Infrared only works if acceleration sensors are enabled.

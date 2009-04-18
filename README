@@ -1,45 +1,48 @@
 = WiiPresent - Presentations using the Wiimote
 
-WiiPresent is a small program that enables you to use a Nintendo WiiMote
+WiiPresent is a small program that enables you to use a Nintendo Wiimote
 for giving presentations using Open Office, xpdf, evince or Acrobat Reader.
 It was designed as an off-the-shelf tool with no need to customize it.
 
 But WiiPresent can also control multimedia applications or firefox.
 It does this by translating WiiMote events into keypresses for applications.
 
+== Reasons for using a Wiimote for presentations
+There were quite a few compelling reasons for using a Wiimote for giving
+presentations:
+
+ - the same features as most of the advanced presentation devices
+
+ - is much cheaper (40 EUR) than those advanced presentation devices (>80 EUR)
+
+ - has an open and documented interface where some advanced devices do not
+   work in Linux
+
+ - uses bluetooth which is common on laptops nowadays, but small USB bluetooth
+   receivers are quite cheap (10 EUR)
+
+ - works very reliably even in a big exhibition hall (LinuxTag 2008) with
+   thousands of people and booths with as many bluetooth devices. We even left
+   the exhbition room and we were still able to control our laptop at the
+   CentOS booth (witness references on request :-))
+
+ - fancy silicon covers exist in various colors matching your outfit are
+   available from Ebay
+
+ - at least one person attributes finding a girlfriend by using the wiimote in
+   a public area (name witheld because of privacy concerns)
+
+ - they come with a wrist-cord (and anti-slip coating) for vivid, animated
+   presenters using lots of gestures
+
 
 == Build requirements
 You need the following libraries in order to build and use WiiPresent:
 
- - libX11 libraries and headers
- - libXtst libraries and headers
- - bluez libraries and headers
- - libcwiimote libraries and headers (build with -D_NO_BLOCKING_UPDATE)
+ - Xorg libX11 and libXtst libraries and headers
+ - BlueZ libraries and headers
+ - libwiimote libraries and headers (built with -D_DISABLE_NONBLOCK_UPDATES)
 
-We tried to minimize the dependencies for WiiPresent.
-
-
-== Key mappings
-=== Keys in NORMAL mode
-- left/right: change slide/channel/tab
-- up/down: change volume/change link
-- -/+: change volume/zoom
-- 1: fullscreen
-- A: Play/Pause
-- home: back/home
-- exit: unavailable
-
-=== Keymaps in WINDOW mode (B)
-- B+A: Enable/disable mouse-mode
-- B+up/down: scroll up and down
-- B+left/right: switch between applications
-- B+minus/plus: change workspace
-- B+2: blank screen/mute audio
-
-=== Keymaps in MOUSE mode
-- left/right: switch between applications
-- up/down: scroll up/down
-- -/+: left and right mouse-buttons
-- A: left mouse-button
+We tried to minimize the dependencies that WiiPresent needs.
 
 // vim: set syntax=asciidoc:

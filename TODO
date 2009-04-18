@@ -1,10 +1,12 @@
 = WiiPresent
+The below list is an overview of missing functionality, ideas and known
+shortcomings for both wiipresent as well as libwiimote.
 
 == Priorities
 - Make the mouse pointer move based on IR data (use WMD implementation)
-  (should probably go into libwiimote)
+  (should probably go into libwiimote, not wiipresent)
 - Scan for wiimotes and pick the closest (< rssi) nearby if more than one
-  (should probably go into libwiimote)
+  (should probably go into libwiimote, not wiipresent)
 - Check if bluetooth device is in fact a wiimote
   (bluetooth name should be 'Nintendo RVL-CNT-01')
 - Put keycode configuration in seperate config-files that are activated
@@ -24,6 +26,7 @@
   (needs IR working for making this practical)
 - Auto-disconnect option to safe batteries (eg. when used as remote)
   (and fast auto-reconnect)
+- Make keys repeat like a keyboard (first press, wait 200ms than repeat)
 
 == Bugs
 - Known bug where for the root window (0x01) we find no application name
@@ -38,3 +41,6 @@
 - Functionality to verify or get the Wiimote name
 - Functionality to scan for wiimotes is missing
 - Absolute positions for infrared handling is missing
+- Sound support
+
+// vim: set syntax=asciidoc:

@@ -1,9 +1,10 @@
-* 0.7.1svn - release ../04/2009
+* 0.7.2 - release 17/04/2009
 - Added -r/--reconnect option to wait for reconnect on disconnect
 - Check bluetooth address length
 - Handle BadWindow errors by ignoring them :-)
 - Improved the logic for getting a window name
 - Added support for kpresenter, pan and xmms
+- Fixed a strlen segfault when no bluetooth address was provided (Joost Damad)
 
 * 0.7.1 - release 16/03/2009
 - Added support for totem

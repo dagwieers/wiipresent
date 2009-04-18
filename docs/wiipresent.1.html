@@ -1,0 +1,361 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="generator" content="AsciiDoc 8.4.1" />
+<title>wiipresent(1)</title>
+<style type="text/css">
+</style>
+</head>
+<body>
+<div id="header">
+<h1>
+wiipresent(1) Manual Page
+</h1>
+<h2>NAME</h2>
+<div class="sectionbody">
+<p>wiipresent -
+   tool to control applications using a Nintendo wiimote
+</p>
+</div>
+</div>
+<h2>SYNOPSIS</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>wiipresent [-v] [-i] [-l length] [-t] -b bluetooth-address</p></div>
+</div>
+<h2 id="_description">DESCRIPTION</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>wiipresent is a tool to control applications using the wiimote. It was
+originally developed for using the wiimote to give presentations using
+openoffice or xpdf, but is now turned into a tool to control your mouse
+and/or other applications.</p></div>
+</div>
+<h2 id="_options">OPTIONS</h2>
+<div class="sectionbody">
+<div class="dlist"><dl>
+<dt class="hdlist1">
+-b bt-address, --bluetooth=bt-address
+</dt>
+<dd>
+<p>
+    Wiimote bluetooth address (use hcitool scan)
+</p>
+</dd>
+<dt class="hdlist1">
+-d name, --display=name
+</dt>
+<dd>
+<p>
+    X display to use
+</p>
+</dd>
+<dt class="hdlist1">
+-i, --infrared
+</dt>
+<dd>
+<p>
+    use infrared sensor to move mouse pointer
+</p>
+</dd>
+<dt class="hdlist1">
+-l length, --length=minutes
+</dt>
+<dd>
+<p>
+    presentation length in minutes
+</p>
+</dd>
+<dt class="hdlist1">
+-r, --reconnect
+</dt>
+<dd>
+<p>
+    on disconnect, wait for reconnect
+</p>
+</dd>
+<dt class="hdlist1">
+-t, --tilt
+</dt>
+<dd>
+<p>
+    use tilt sensors to move mouse pointer
+</p>
+</dd>
+<dt class="hdlist1">
+-h, --help
+</dt>
+<dd>
+<p>
+    display this help and exit
+</p>
+</dd>
+<dt class="hdlist1">
+-v, --verbose
+</dt>
+<dd>
+<p>
+    increase verbosity
+</p>
+</dd>
+<dt class="hdlist1">
+--version
+</dt>
+<dd>
+<p>
+    output version information and exit
+</p>
+</dd>
+</dl></div>
+</div>
+<h2 id="_usage">USAGE</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Before you can start using wiipresent you need to know the bluetooth address
+of the wiimote you want to use. You can scan your bluetooth viscinity by using
+hcitool like:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><tt>hcitool scan</tt></pre>
+</div></div>
+<div class="paragraph"><p>after having pressed the 1 and 2 keys on your wiimote once. You will then see
+something like:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><tt>[root@moria ~]# hcitool scan
+Scanning ...
+00:21:64:EF:62:F5       Nokia E71
+00:1B:7A:F8:B5:64       Nintendo RVL-CNT-01</tt></pre>
+</div></div>
+<div class="paragraph"><p>Then start wiipresent using the following syntax:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><tt>[dag@moria ~]# wiipresent -b 00:1B:7A:F8:B5:64
+Please press 1+2 on the wiimote with address 00:1B:7A:F8:B5:64...
+Battery level now is 81%.</tt></pre>
+</div></div>
+</div>
+<h2 id="_key_mappings">KEY MAPPINGS</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>When you press a button on your Nintendo Wiimote, WiiPresent sends a Key event
+to the application that has the focus. Depending on the application, the
+buttons have a different meaning even though there is some consistency to what
+happens.</p></div>
+<div class="paragraph"><p>Currently the key mappings for each application is hard-coded in the
+wiipresent tool, but in the future we plan to make this dynamically
+configurable so you have more control over the behaviour of your wiimote
+for your favorite applications.</p></div>
+<div class="paragraph"><p>Since we have a limited number of buttons on a Ninendo Wiimote we are limited
+in functionality we can map to the application, however to overcome this
+limitation combinations of keys have a special meaning.</p></div>
+<div class="paragraph"><p>When you press any button, you are using NORMAL mode. If you keep the B
+button pressed together with other buttons, you are in WINDOW mode. If you
+press button B and button A together you toggle between MOUSE mode and
+NORMAL mode.</p></div>
+</div>
+<h2 id="_normal_mode">NORMAL MODE</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>The following keys are mapped in NORMAL mode, depending on the application
+that has the focus this may vary.</p></div>
+<div class="dlist"><dl>
+<dt class="hdlist1">
+Left/Right buttons
+</dt>
+<dd>
+<p>
+    change slide, change channel, change tab
+</p>
+</dd>
+<dt class="hdlist1">
+Up/Down buttons
+</dt>
+<dd>
+<p>
+    change volume, change links
+</p>
+</dd>
+<dt class="hdlist1">
+<em>-</em>/<em>+</em> buttons
+</dt>
+<dd>
+<p>
+    change volume, zoom out/in
+</p>
+</dd>
+<dt class="hdlist1">
+<em>A</em> button
+</dt>
+<dd>
+<p>
+    toggle play/pause, change source
+</p>
+</dd>
+<dt class="hdlist1">
+<em>1</em> button
+</dt>
+<dd>
+<p>
+    toggle fullscreen
+</p>
+</dd>
+<dt class="hdlist1">
+<em>2</em> button
+</dt>
+<dd>
+<p>
+    change aspect ratio
+</p>
+</dd>
+<dt class="hdlist1">
+<em>home</em> button
+</dt>
+<dd>
+<p>
+    go back, home key
+</p>
+</dd>
+<dt class="hdlist1">
+<em>exit</em> button
+</dt>
+<dd>
+<p>
+    exit wiipresent (not implemented yet due to libwiimote bug)
+</p>
+</dd>
+</dl></div>
+</div>
+<h2 id="_window_mode">WINDOW MODE</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>The following keys are mapped in WINDOW mode, depending on the application
+that has the focus this may vary. <strong>The B button is pressed together with the
+buttons below.</strong></p></div>
+<div class="dlist"><dl>
+<dt class="hdlist1">
+Up/Down buttons
+</dt>
+<dd>
+<p>
+    scroll up/down
+</p>
+</dd>
+<dt class="hdlist1">
+Left/Right buttons
+</dt>
+<dd>
+<p>
+    switch between applications (window manager)
+</p>
+</dd>
+<dt class="hdlist1">
+<em>-</em>/<em>+</em> buttons
+</dt>
+<dd>
+<p>
+    change workspace
+</p>
+</dd>
+<dt class="hdlist1">
+<em>A</em> button
+</dt>
+<dd>
+<p>
+    toggle MOUSE mode
+</p>
+</dd>
+<dt class="hdlist1">
+<em>2</em> button
+</dt>
+<dd>
+<p>
+    blank screen, mute audio (censor info)
+</p>
+</dd>
+</dl></div>
+</div>
+<h2 id="_mouse_mode">MOUSE MODE</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>The following keys are mapped in MOUSE mode, depending on the application
+that has the focus this may vary. <strong>MOUSE mode is toggled by pressing the <em>A</em>
+button and <em>B</em> button at the same time.</strong></p></div>
+<div class="dlist"><dl>
+<dt class="hdlist1">
+Up/Down buttons
+</dt>
+<dd>
+<p>
+    scroll up/down
+</p>
+</dd>
+<dt class="hdlist1">
+Left/Right buttons
+</dt>
+<dd>
+<p>
+    switch between applications
+</p>
+</dd>
+<dt class="hdlist1">
+<em>-</em>/<em>+</em> buttons
+</dt>
+<dd>
+<p>
+    left/right mouse buttons
+</p>
+</dd>
+<dt class="hdlist1">
+<em>A</em> button
+</dt>
+<dd>
+<p>
+    left mouse button
+</p>
+</dd>
+</dl></div>
+</div>
+<h2 id="_bugs">BUGS</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>This program is free of bugs. Yeah right.</p></div>
+<div class="paragraph"><p>If you have improvements or bugreports, please send them to:
+<a href="mailto:dag@wieers.com">dag@wieers.com</a></p></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">Please see the TODO file for known bugs and future plans.</td>
+</tr></table>
+</div>
+</div>
+<h2 id="_see_also">SEE ALSO</h2>
+<div class="sectionbody">
+<div class="literalblock">
+<div class="content">
+<pre><tt>hcitool(1)</tt></pre>
+</div></div>
+</div>
+<h2 id="_history">HISTORY</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>The idea of using the wiimote for giving presentations was devised at LinuxTag
+2008 in Berlin and a basic hack (based on WMD) was showcased at LinuxTag the
+second day at the CentOS booth. It included infrared mouse support and was
+written by Dag Wieers.</p></div>
+<div class="paragraph"><p>Because we need deadlines for getting anything done, we instantly submitted a
+paper for FrOSCon 2008 that was selected. And a second hack written in C
+(using cwiid) implemented tilt mouse support and timely rumbles was showcased
+at FrOSCon and was written by Geerd-Dietger Hoffman.</p></div>
+<div class="paragraph"><p>At FOSDEM 2009 the current version was written from scratch at the CentOS
+booth (in C using libwiimote) and demonstrated before a live audience. Nobody
+(that we know of) was injured during this demonstration.</p></div>
+</div>
+<h2 id="_author">AUTHOR</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Written by Dag Wieers <a href="mailto:dag@wieers.com">dag@wieers.com</a></p></div>
+<div class="paragraph"><p>Homepage at <a href="http://dag.wieers.com/home-made/wiipresent/">http://dag.wieers.com/home-made/wiipresent/</a></p></div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Version 0.6<br />
+Last updated 2009-04-17 21:34:26 CEST
+</div>
+</div>
+</body>
+</html>
