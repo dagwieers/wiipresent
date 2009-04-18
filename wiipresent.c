@@ -31,6 +31,7 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #include <X11/Xutil.h>
 #include <X11/extensions/XTest.h>
 #include <X11/XF86keysym.h>
+#include <X11/keysym.h> // Needed for older X releases
 
 #include "wiimote_api.h"
 
