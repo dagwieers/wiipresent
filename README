@@ -1,10 +1,10 @@
-= WiiPresent - Presentations using the Wiimote
+= wiipresent - Presentations using the Wiimote
 
-WiiPresent is a small program that enables you to use a Nintendo Wiimote
+Wiipresent is a small program that enables you to use a Nintendo Wiimote
 for giving presentations using Open Office, xpdf, evince or Acrobat Reader.
 It was designed as an off-the-shelf tool with no need to customize it.
 
-But WiiPresent can also control multimedia applications or firefox.
+But wiipresent can also control multimedia applications or firefox.
 It does this by translating WiiMote events into keypresses for applications.
 
 == Reasons for using a Wiimote for presentations
@@ -36,13 +36,25 @@ presentations:
    presenters using lots of gestures
 
 
-== Build requirements
-You need the following libraries in order to build and use WiiPresent:
+== Features
+Currently wiipresent can do the following things:
 
- - Xorg libX11 and libXtst libraries and headers
- - BlueZ libraries and headers
- - libwiimote libraries and headers (built with -D_DISABLE_NONBLOCK_UPDATES)
+ - only requires a bluetooth receiver for communication
 
-We tried to minimize the dependencies that WiiPresent needs.
+ - rumbles to indicate how much time you have left for your presentation
+
+ - leds indicate how much time has passed/is left for your presentation
+
+ - has keymaps for tens of presentation applications (evince, xpdf,
+   openoffice, acrobat reader, ...)
+
+ - also has keymaps for many other applications (multimedia, terminal,
+   browser, ...)
+
+ - can be used to control your mouse pointer (to start an application, copy
+   files, shutdown, ...)
+
+See the TODO file that comes with the application for upcoming features,
+ideas and known issues.
 
 // vim: set syntax=asciidoc:
