@@ -1,3 +1,6 @@
+* 0.7.2svn - release 24/04/2009
+- Added support for kpdf
+
 * 0.7.2 - release 17/04/2009
 - Added -r/--reconnect option to wait for reconnect on disconnect
 - Check bluetooth address length
