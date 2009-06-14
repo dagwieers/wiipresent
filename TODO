@@ -13,6 +13,8 @@ shortcomings for both wiipresent as well as libwiimote.
   when mouseover application
 
 == Ideas
+- Allow to set a timeout time (to not drain battery when used as a remote)
+- Allow to scroll up and down using B-key and tilting up/down (like the Wii)
 - Rumble/flash lights when battery low
 - Make sound when presentation is over
 - Record timings and print timestamp + keypress for later review
