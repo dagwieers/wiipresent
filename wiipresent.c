@@ -270,13 +270,16 @@ void rumble(wiimote_t *wmote, int msecs) {
 
 int main(int argc, char **argv) {
     int length = 0;
-    char *btaddress = NULL;
+    int totaddr = 20;
+    int numaddr = 0;
+    char *btaddresses[totaddr];
     int infrared = False;
     int tilt = True;
     int reconnect = False;
     wmote = (wiimote_t) WIIMOTE_INIT;
 
     int c;
+    int i = 0;
 
     // Make stdout unbuffered
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -304,7 +307,8 @@ int main(int argc, char **argv) {
 
         switch (c) {
             case 'b':
-                btaddress = optarg;
+                btaddresses[numaddr] = optarg;
+                numaddr++;
                 continue;
             case 'd':
                 displayname = optarg;
@@ -366,12 +370,16 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
 
     // Check bluetooth address
     // FIXME: Allow for wiimote scanning
-    if (btaddress == NULL) {
-        fprintf(stderr, "%s: Bluetooth address (-b/--bluetooth) is mandatory.\n", NAME);
+    if (numaddr == 0) {
+        fprintf(stderr, "%s: One bluetooth address (-b/--bluetooth) is mandatory.\n", NAME);
         return 1;
-    } else if (strlen(btaddress) != 17) {
-        fprintf(stderr, "%s: Bluetooth address %s has incorrect length.\n", NAME, btaddress);
-        return 1;
+    }
+
+    for(i=0; i<numaddr; i++) {
+        if (strlen(btaddresses[i]) != 17) {
+            fprintf(stderr, "%s: Bluetooth address %s has incorrect length.\n", NAME, btaddresses[i]);
+            return 1;
+        }
     }
 
     // Obtain the X11 display.
@@ -391,13 +399,13 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         XSetErrorHandler(IgnoreDeadWindow);
 
         // Wait for 1+2
-        if (btaddress == NULL) {
+        if (numaddr == 0) {
     //        printf("Please press 1+2 on a wiimote in the viscinity...");
-            fprintf(stderr, "%s: Sorry, you need to provide a bluetooth address using -b/--bluetooth.\n", NAME);
+            fprintf(stderr, "%s: Sorry, you need to provide at least one  bluetooth address using -b/--bluetooth.\n", NAME);
             exit(1);
         } else {
-            printf("Please press 1+2 on the wiimote with address %s...", btaddress);
-            wiimote_connect(&wmote, btaddress);
+            printf("Please press 1+2 on the wiimote with address %s...", btaddresses[0]);
+            wiimote_connect(&wmote, btaddresses[0]);
             printf("\n");
         }
 
@@ -1088,19 +1096,19 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 // Zoom in, volume up
                 if (wmote.keys.plus) {
                     if (strcasestr(name, "firefox") == name) {
-                        XKeycode(XK_plus, ControlMask);
+                        XKeycode(XK_plus, ShiftMask | ControlMask);
                     } else if (strcasestr(name, "gnome-terminal") == name) {
                         XKeycode(XK_plus, ShiftMask | ControlMask);
                     } else if (strcasestr(name, "kpdf") == name) {
-                        XKeycode(XK_plus, ControlMask);
+                        XKeycode(XK_plus, ShiftMask | ControlMask);
                     } else if (strcasestr(name, "mplayer") == name) {
                         XKeycode(XK_0, ShiftMask);
                     } else if (strcasestr(name, "nautilus") == name) {
-                        XKeycode(XK_plus, ControlMask);
+                        XKeycode(XK_plus, ShiftMask | ControlMask);
                     } else if (strcasestr(name, "opera") == name) {
                         XKeycode(XK_plus, 0);
                     } else if (strcasestr(name, "rhythmbox") == name) {
-                        XKeycode(XK_Up, ControlMask);
+                        XKeycode(XK_Up, ShiftMask | ControlMask);
                     } else if (strcasestr(name, "totem") == name) {
                         XKeycode(XK_Up, 0); 
                     } else if (strcasestr(name, "tvtime") == name) {

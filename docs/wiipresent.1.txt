@@ -128,7 +128,7 @@ that has the focus this may vary. *The B button is pressed together with the
 buttons below.*
 
 Up/Down buttons::
-    scroll up/down
+    scroll up/down, page up/down
 
 Left/Right buttons::
     switch between applications (window manager)
@@ -158,7 +158,7 @@ Left/Right buttons::
     left/right mouse buttons
 
 'A' button::
-    left mouse button
+    leave mouse button
 
 
 == BUGS
