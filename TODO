@@ -7,8 +7,6 @@ shortcomings for both wiipresent as well as libwiimote.
   (should probably go into libwiimote, not wiipresent)
 - Scan for wiimotes and pick the closest (< rssi) nearby if more than one
   (should probably go into libwiimote, not wiipresent)
-- Check if bluetooth device is in fact a wiimote
-  (bluetooth name should be 'Nintendo RVL-CNT-01')
 - Put keycode configuration in seperate config-files that are activated
   when mouseover application
 

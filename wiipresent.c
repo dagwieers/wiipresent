@@ -27,6 +27,10 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #include <time.h>
 #include <unistd.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
+
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XTest.h>
@@ -268,6 +272,52 @@ void rumble(wiimote_t *wmote, int msecs) {
     wmote->rumble = 0;
 }
 
+int wii_scan(char *wiimotes[18]) {
+    char addr[18] = { 0 };
+
+    int dev_id = hci_get_route(NULL);
+
+    int sock = hci_open_dev( dev_id );
+    if (dev_id < 0 || sock < 0) {
+        fprintf(stderr, "Failed to open socket.\n");
+        return -1;
+    }
+
+    int timeout = 4;
+    int max_rsp = 128;
+    int flags = IREQ_CACHE_FLUSH;
+
+    inquiry_info scan_info_arr[max_rsp];
+    inquiry_info* scan_info = scan_info_arr;
+    memset(&scan_info_arr, 0, sizeof(scan_info_arr));
+
+//    printf("Scanning for wiimotes...\n");
+
+    int num_rsp = hci_inquiry(dev_id, timeout, max_rsp, NULL, &scan_info, flags);
+    if( num_rsp < 0 ) {
+        fprintf(stderr, "Scanning for wiimotes failed.\n");
+        return -1;
+    }
+
+    int num_wiimotes = 0;
+    int i;
+    for (i = 0; i < num_rsp; i++) {
+        ba2str(&scan_info[i].bdaddr, addr); 
+
+        // Check if this is a wiimote
+        if ((scan_info[i].dev_class[0] == 0x04) &&
+            (scan_info[i].dev_class[1] == 0x25) &&
+            (scan_info[i].dev_class[2] == 0x00)) {
+//            printf("%s [%hhd] (wiimote)\n", addr, wii_rssi(dev_id, scan_info[i].bdaddr));
+            fprintf(stderr, "%s [%hhd] (wiimote)\n", addr, 0);
+            wiimotes[num_wiimotes++] = strndup(addr, sizeof(addr));
+//        } else {
+//            printf("%s (skipped)\n", addr);
+        }
+    }
+    return num_wiimotes;
+}
+
 int main(int argc, char **argv) {
     int length = 0;
     int totaddr = 20;
@@ -279,7 +329,7 @@ int main(int argc, char **argv) {
     wmote = (wiimote_t) WIIMOTE_INIT;
 
     int c;
-    int i = 0;
+    int i = 0, j = 0;
 
     // Make stdout unbuffered
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -368,13 +418,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         }
     }
 
-    // Check bluetooth address
-    // FIXME: Allow for wiimote scanning
-    if (numaddr == 0) {
-        fprintf(stderr, "%s: One bluetooth address (-b/--bluetooth) is mandatory.\n", NAME);
-        return 1;
-    }
-
+    // Check bluetooth addresses
     for(i=0; i<numaddr; i++) {
         if (strlen(btaddresses[i]) != 17) {
             fprintf(stderr, "%s: Bluetooth address %s has incorrect length.\n", NAME, btaddresses[i]);
@@ -389,6 +433,10 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
     if (displayname == NULL)
         displayname = ":0.0";
 
+    int num_wiimotes = 0;
+    char *wiimotes[18];
+    char *wiimote_address = NULL;
+
     // Reconnect loop
     do {
         display = XOpenDisplay(displayname);
@@ -398,16 +446,35 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         }
         XSetErrorHandler(IgnoreDeadWindow);
 
-        // Wait for 1+2
-        if (numaddr == 0) {
-    //        printf("Please press 1+2 on a wiimote in the viscinity...");
-            fprintf(stderr, "%s: Sorry, you need to provide at least one  bluetooth address using -b/--bluetooth.\n", NAME);
-            exit(1);
-        } else {
-            printf("Please press 1+2 on the wiimote with address %s...", btaddresses[0]);
-            wiimote_connect(&wmote, btaddresses[0]);
-            printf("\n");
+        num_wiimotes = 0;
+        wiimote_address = NULL;
+
+        printf("Please press 1+2 on your wiimote...");
+
+        while (wiimote_address == NULL) {
+            num_wiimotes = wii_scan(&wiimotes);
+
+            if (num_wiimotes <= 0) continue;
+
+            if (numaddr == 0) {
+                wiimote_address = wiimotes[0];
+            } else {
+                for (i = 0; i < num_wiimotes; i++) {
+                    for (j = 0; j < numaddr; j++) {
+//                        fprintf(stderr, "Comparing %s and %s\n", wiimotes[i], btaddresses[j]);
+                        if (strncmp(wiimotes[i], btaddresses[j], 18)) {
+                            wiimote_address = wiimotes[i];
+                            break;
+                        }
+                    }
+                    if (wiimote_address != NULL) break;
+                }
+            }
         }
+        printf("\n");
+
+        fprintf(stderr, "Found %d wiimotes, choosing wiimote %s !\n", num_wiimotes, wiimote_address);
+        wiimote_connect(&wmote, wiimote_address);
 
         signal(SIGINT, exit_clean);
         signal(SIGHUP, exit_clean);
@@ -595,13 +662,13 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     }
                 }
 
-                // FIXME: We have to keep Alt pressed if we want to browse between apps
+                // FIXME: We have to keep Alt pressed if we want to switch between applications
                 if (wmote.keys.left) {
-                    XKeycode(XK_Tab, Mod1Mask | ShiftMask);
+                    XKeycode(XK_Tab, Mod1Mask);
                 }
 
                 if (wmote.keys.right) {
-                    XKeycode(XK_Tab, Mod1Mask);
+                    XKeycode(XK_Tab, Mod1Mask | ShiftMask);
                 }
 
                 // Previous workspace
