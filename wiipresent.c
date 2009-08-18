@@ -27,6 +27,8 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #include <time.h>
 #include <unistd.h>
 
+#include <sys/ioctl.h>
+
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
@@ -272,14 +274,99 @@ void rumble(wiimote_t *wmote, int msecs) {
     wmote->rumble = 0;
 }
 
-int wii_scan(char *wiimotes[18]) {
+int find_conn(int s, int dev_id, long arg) {
+    struct hci_conn_list_req *cl;
+    struct hci_conn_info *ci;
+    int i;
+
+    if (!(cl = malloc(10 * sizeof(*ci) + sizeof(*cl)))) {
+        perror("Can't allocate memory");
+        exit(1);
+    }
+    cl->dev_id = dev_id;
+    cl->conn_num = 10;
+    ci = cl->conn_info;
+
+    if (ioctl(s, HCIGETCONNLIST, (void*)cl)) {
+        perror("Can't get connection list");
+        exit(1);
+    }
+
+    for (i=0; i < cl->conn_num; i++, ci++)
+        if (!bacmp((bdaddr_t *)arg, &ci->bdaddr))
+            return 1;
+    return 0;
+}
+
+int wiimote_rssi(int dev_id, bdaddr_t bdaddr){
+    int cc = 0;
+    uint16_t handle;
+    struct hci_conn_info_req *cr;
+    int8_t rssi = 1;
+
+    uint8_t role = 0x01;
+    unsigned int ptype = HCI_DM1 | HCI_DM3 | HCI_DM5 | HCI_DH1 | HCI_DH3 | HCI_DH5;
+
+    dev_id = hci_for_each_dev(HCI_UP, find_conn, (long) &bdaddr);
+    if (dev_id < 0) {
+        dev_id = hci_get_route(&bdaddr);
+        cc = 1;
+    }
+
+    if (dev_id < 0) {
+        fprintf(stderr, "Device is not available.\n");
+        goto clean;
+    }
+
+    int dd = hci_open_dev(dev_id);
+    if (dd < 0) {
+        perror("HCI device open failed");
+        goto clean;
+    }
+
+    if (cc) {
+        if (hci_create_connection(dd, &bdaddr, htobs(ptype),htobs(0x0000), role, &handle, 10000) < 0){
+            perror("Can't create connection");
+            goto clean;
+        }
+    }
+
+    cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
+    if (!cr) {
+        perror("Can't allocate memory");
+        exit(1);
+    }
+
+    bacpy(&cr->bdaddr, &bdaddr);
+    cr->type = ACL_LINK;
+    if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+        perror("Get connection info failed");
+        goto crclean;
+    }
+
+    if (hci_read_rssi(dd, htobs(cr->conn_info->handle), &rssi, 1000) < 0) {
+        perror("Read RSSI failed");
+        goto crclean;
+    }
+
+    // Some clean up
+    crclean:
+    free(cr);
+
+    clean:
+    hci_close_dev(dd);
+
+    return rssi;
+}
+
+int wiimote_scan(char *wiimotes[18]) {
     char addr[18] = { 0 };
 
     int dev_id = hci_get_route(NULL);
 
     int sock = hci_open_dev( dev_id );
     if (dev_id < 0 || sock < 0) {
-        fprintf(stderr, "Failed to open socket.\n");
+        perror("Failed to open socket.");
         return -1;
     }
 
@@ -291,28 +378,26 @@ int wii_scan(char *wiimotes[18]) {
     inquiry_info* scan_info = scan_info_arr;
     memset(&scan_info_arr, 0, sizeof(scan_info_arr));
 
-//    printf("Scanning for wiimotes...\n");
-
     int num_rsp = hci_inquiry(dev_id, timeout, max_rsp, NULL, &scan_info, flags);
-    if( num_rsp < 0 ) {
-        fprintf(stderr, "Scanning for wiimotes failed.\n");
+    if (num_rsp < 0) {
+        perror("Scanning for wiimotes failed.");
         return -1;
     }
 
     int num_wiimotes = 0;
     int i;
     for (i = 0; i < num_rsp; i++) {
-        ba2str(&scan_info[i].bdaddr, addr); 
+        ba2str(&scan_info[i].bdaddr, addr);
 
         // Check if this is a wiimote
         if ((scan_info[i].dev_class[0] == 0x04) &&
             (scan_info[i].dev_class[1] == 0x25) &&
             (scan_info[i].dev_class[2] == 0x00)) {
-//            printf("%s [%hhd] (wiimote)\n", addr, wii_rssi(dev_id, scan_info[i].bdaddr));
-            fprintf(stderr, "%s [%hhd] (wiimote)\n", addr, 0);
+            // FIXME: Verify that I am permitted to get the rssi (root ?)
+            if (verbose >= 1) fprintf(stderr, "\n - wiimote %s rssi %hhd", addr, wiimote_rssi(dev_id, scan_info[i].bdaddr));
             wiimotes[num_wiimotes++] = strndup(addr, sizeof(addr));
-//        } else {
-//            printf("%s (skipped)\n", addr);
+        } else {
+            if (verbose >= 2) fprintf(stderr, "\n - device %s skipped", addr);
         }
     }
     return num_wiimotes;
@@ -449,10 +534,12 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         num_wiimotes = 0;
         wiimote_address = NULL;
 
-        printf("Please press 1+2 on your wiimote...");
+        printf("Please press 1+2 on your wiimote..");
 
         while (wiimote_address == NULL) {
-            num_wiimotes = wii_scan(&wiimotes);
+            if (!verbose) printf(".");
+
+            num_wiimotes = wiimote_scan(&wiimotes);
 
             if (num_wiimotes <= 0) continue;
 
@@ -461,7 +548,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             } else {
                 for (i = 0; i < num_wiimotes; i++) {
                     for (j = 0; j < numaddr; j++) {
-//                        fprintf(stderr, "Comparing %s and %s\n", wiimotes[i], btaddresses[j]);
+                        if (verbose >= 2) fprintf(stderr, "Comparing %s and %s\n", wiimotes[i], btaddresses[j]);
                         if (strncmp(wiimotes[i], btaddresses[j], 18)) {
                             wiimote_address = wiimotes[i];
                             break;

@@ -5,9 +5,9 @@ shortcomings for both wiipresent as well as libwiimote.
 == Priorities
 - Make the mouse pointer move based on IR data (use WMD implementation)
   (should probably go into libwiimote, not wiipresent)
-- Scan for wiimotes and pick the closest (< rssi) nearby if more than one
+- Pick the closest (< rssi) or stongest (> quality) wiimote if more than one
   (should probably go into libwiimote, not wiipresent)
-- Put keycode configuration in seperate config-files that are activated
+- Put keycode configuration in separate config-files that are activated
   when mouseover application
 
 == Ideas
