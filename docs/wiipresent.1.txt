@@ -1,6 +1,6 @@
 = wiipresent(1)
 Dag Wieers <dag@wieers.com>
-v0.6, March 2009
+v0.7, August 2009
 
 
 == NAME
@@ -8,7 +8,7 @@ wiipresent - tool to control applications using a Nintendo wiimote
 
 
 == SYNOPSIS
-wiipresent [-v] [-i] [-l length] [-t] -b bluetooth-address
+wiipresent [options]...
 
 
 == DESCRIPTION
@@ -20,7 +20,7 @@ and/or other applications.
 
 == OPTIONS
 -b bt-address, --bluetooth=bt-address::
-    Wiimote bluetooth address (use hcitool scan)
+    Wiimote bluetooth addresses (use hcitool scan to find yours)
 
 -d name, --display=name::
     X display to use
@@ -48,9 +48,11 @@ and/or other applications.
 
 
 == USAGE
-Before you can start using wiipresent you need to know the bluetooth address
-of the wiimote you want to use. You can scan your bluetooth viscinity by using
-hcitool like:
+You can simply start +wiipresent+ and it will scan for nearby wiimotes.
+
+In case you want to force a specific wiimote, you need to know the bluetooth
+address of the wiimote you want to use. You can scan your bluetooth viscinity
+by using hcitool like:
 ----
 hcitool scan
 ----
@@ -70,6 +72,9 @@ Then start wiipresent using the following syntax:
 Please press 1+2 on the wiimote with address 00:1B:7A:F8:B5:64...
 Battery level now is 81%.
 ----
+
+You can also provide more than one bluetooth address if you have more than one
+wiimote and it will then limit itself to one from the list.
 
 
 == KEY MAPPINGS

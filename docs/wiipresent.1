@@ -2,7 +2,7 @@
 .\" It was generated using the DocBook XSL Stylesheets (version 1.69.1).
 .\" Instead of manually editing it, you probably should edit the DocBook XML
 .\" source for it and then use the DocBook XSL Stylesheets to regenerate it.
-.TH "WIIPRESENT" "1" "08/14/2009" "" ""
+.TH "WIIPRESENT" "1" "08/20/2009" "" ""
 .\" disable hyphenation
 .nh
 .\" disable justification (adjust text to left margin only)
@@ -10,7 +10,7 @@
 .SH "NAME"
 wiipresent \- tool to control applications using a Nintendo wiimote
 .SH "SYNOPSIS"
-wiipresent [\-v] [\-i] [\-l length] [\-t] \-b bluetooth\-address
+wiipresent [options]\&...
 .sp
 .SH "DESCRIPTION"
 wiipresent is a tool to control applications using the wiimote. It was originally developed for using the wiimote to give presentations using openoffice or xpdf, but is now turned into a tool to control your mouse and/or other applications.
@@ -18,7 +18,7 @@ wiipresent is a tool to control applications using the wiimote. It was originall
 .SH "OPTIONS"
 .TP
 \-b bt\-address, \-\-bluetooth=bt\-address
-Wiimote bluetooth address (use hcitool scan)
+Wiimote bluetooth addresses (use hcitool scan to find yours)
 .TP
 \-d name, \-\-display=name
 X display to use
@@ -44,7 +44,9 @@ increase verbosity
 \-\-version
 output version information and exit
 .SH "USAGE"
-Before you can start using wiipresent you need to know the bluetooth address of the wiimote you want to use. You can scan your bluetooth viscinity by using hcitool like:
+You can simply start wiipresent and it will scan for nearby wiimotes.
+.sp
+In case you want to force a specific wiimote, you need to know the bluetooth address of the wiimote you want to use. You can scan your bluetooth viscinity by using hcitool like:
 .sp
 .sp
 .nf
@@ -67,6 +69,8 @@ Then start wiipresent using the following syntax:
 Please press 1+2 on the wiimote with address 00:1B:7A:F8:B5:64...
 Battery level now is 81%.
 .fi
+You can also provide more than one bluetooth address if you have more than one wiimote and it will then limit itself to one from the list.
+.sp
 .SH "KEY MAPPINGS"
 When you press a button on your Nintendo Wiimote, WiiPresent sends a Key event to the application that has the focus. Depending on the application, the buttons have a different meaning even though there is some consistency to what happens.
 .sp

@@ -23,6 +23,7 @@ wiipresent: wiipresent.c
 install:
 	install -Dp -m0755 wiipresent $(DESTDIR)$(bindir)/wiipresent
 	install -Dp -m0644 docs/wiipresent.1 $(DESTDIR)$(mandir)/man1/wiipresent.1
+	install -Dp -m0755 wiipresent-xinit.sh $(DESTDIR)$(sysconfdir)/X11/xinitrc.d/wiipresent.sh
 
 docs:
 	$(MAKE) -C docs docs

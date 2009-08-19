@@ -22,7 +22,7 @@ wiipresent(1) Manual Page
 </div>
 <h2>SYNOPSIS</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>wiipresent [-v] [-i] [-l length] [-t] -b bluetooth-address</p></div>
+<div class="paragraph"><p>wiipresent [options]&#8230;</p></div>
 </div>
 <h2 id="_description">DESCRIPTION</h2>
 <div class="sectionbody">
@@ -39,7 +39,7 @@ and/or other applications.</p></div>
 </dt>
 <dd>
 <p>
-    Wiimote bluetooth address (use hcitool scan)
+    Wiimote bluetooth addresses (use hcitool scan to find yours)
 </p>
 </dd>
 <dt class="hdlist1">
@@ -110,9 +110,10 @@ and/or other applications.</p></div>
 </div>
 <h2 id="_usage">USAGE</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Before you can start using wiipresent you need to know the bluetooth address
-of the wiimote you want to use. You can scan your bluetooth viscinity by using
-hcitool like:</p></div>
+<div class="paragraph"><p>You can simply start <tt>wiipresent</tt> and it will scan for nearby wiimotes.</p></div>
+<div class="paragraph"><p>In case you want to force a specific wiimote, you need to know the bluetooth
+address of the wiimote you want to use. You can scan your bluetooth viscinity
+by using hcitool like:</p></div>
 <div class="listingblock">
 <div class="content">
 <pre><tt>hcitool scan</tt></pre>
@@ -133,6 +134,8 @@ Scanning ...
 Please press 1+2 on the wiimote with address 00:1B:7A:F8:B5:64...
 Battery level now is 81%.</tt></pre>
 </div></div>
+<div class="paragraph"><p>You can also provide more than one bluetooth address if you have more than one
+wiimote and it will then limit itself to one from the list.</p></div>
 </div>
 <h2 id="_key_mappings">KEY MAPPINGS</h2>
 <div class="sectionbody">
@@ -353,8 +356,8 @@ booth (in C using libwiimote) and demonstrated before a live audience. Nobody
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 0.6<br />
-Last updated 2009-08-14 19:22:13 CEST
+Version 0.7<br />
+Last updated 2009-08-20 00:51:05 CEST
 </div>
 </div>
 </body>

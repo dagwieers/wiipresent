@@ -1,8 +1,9 @@
-* 0.7.2svn - release 24/04/2009
+* 0.7.5 - release 20/08/2009
 - Added support for kpdf
 - Added example xinit script
 - Allow for more than one bluetooth address
 - Scan for Nintendo RVL-CNT-01 devices (Geerd-Dietger Hoffman)
+- Added xinit script
 
 * 0.7.2 - release 17/04/2009
 - Added -r/--reconnect option to wait for reconnect on disconnect

@@ -28,6 +28,7 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 #include <unistd.h>
 
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -44,7 +45,7 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 Status XQueryCommand(Display *display, Window window, char **name);
 
 static char NAME[] = "wiipresent";
-static char VERSION[] = "0.7.2svn";
+static char VERSION[] = "0.7.5";
 
 static char *displayname = NULL;
 static Display *display = NULL;
@@ -367,7 +368,7 @@ int wiimote_scan(char *wiimotes[18]) {
     int sock = hci_open_dev( dev_id );
     if (dev_id < 0 || sock < 0) {
         perror("Failed to open socket.");
-        return -1;
+        exit(255);
     }
 
     int timeout = 4;
@@ -394,10 +395,11 @@ int wiimote_scan(char *wiimotes[18]) {
             (scan_info[i].dev_class[1] == 0x25) &&
             (scan_info[i].dev_class[2] == 0x00)) {
             // FIXME: Verify that I am permitted to get the rssi (root ?)
-            if (verbose >= 1) fprintf(stderr, "\n - wiimote %s rssi %hhd", addr, wiimote_rssi(dev_id, scan_info[i].bdaddr));
+//            if (verbose >= 1) fprintf(stderr, "\n - wiimote %s rssi %hhd", addr, wiimote_rssi(dev_id, scan_info[i].bdaddr));
+            if (verbose >= 1) fprintf(stderr, " - wiimote %s\n", addr);
             wiimotes[num_wiimotes++] = strndup(addr, sizeof(addr));
         } else {
-            if (verbose >= 2) fprintf(stderr, "\n - device %s skipped", addr);
+            if (verbose >= 2) fprintf(stderr, " - device %s skipped\n", addr);
         }
     }
     return num_wiimotes;
@@ -534,11 +536,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         num_wiimotes = 0;
         wiimote_address = NULL;
 
-        printf("Please press 1+2 on your wiimote..");
+        printf("Please press 1+2 on your wiimote..\n");
 
         while (wiimote_address == NULL) {
-            if (!verbose) printf(".");
-
             num_wiimotes = wiimote_scan(&wiimotes);
 
             if (num_wiimotes <= 0) continue;
@@ -558,7 +558,6 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 }
             }
         }
-        printf("\n");
 
         fprintf(stderr, "Found %d wiimotes, choosing wiimote %s !\n", num_wiimotes, wiimote_address);
         wiimote_connect(&wmote, wiimote_address);
