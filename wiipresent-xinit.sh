@@ -2,10 +2,12 @@
 
 exec >>/var/log/wiipresent.log 2>&1
 
-killall -KILL wiipresent
+(
+    killall wiipresent.sh wiipresent
 
-while true; do
+    while true; do
         date
-        wiipresent -d :0.0 -l 45 -r -t -v -v
+        wiipresent -l 45 -r -t -v -v
         echo "=============="
-done
+    done
+) &

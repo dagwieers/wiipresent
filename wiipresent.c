@@ -304,6 +304,7 @@ int wiimote_rssi(int dev_id, bdaddr_t bdaddr){
     uint16_t handle;
     struct hci_conn_info_req *cr;
     int8_t rssi = 1;
+    int socket = 0;
 
     uint8_t role = 0x01;
     unsigned int ptype = HCI_DM1 | HCI_DM3 | HCI_DM5 | HCI_DH1 | HCI_DH3 | HCI_DH5;
@@ -319,14 +320,14 @@ int wiimote_rssi(int dev_id, bdaddr_t bdaddr){
         goto clean;
     }
 
-    int dd = hci_open_dev(dev_id);
-    if (dd < 0) {
+    socket = hci_open_dev(dev_id);
+    if (socket < 0) {
         perror("HCI device open failed");
         goto clean;
     }
 
     if (cc) {
-        if (hci_create_connection(dd, &bdaddr, htobs(ptype),htobs(0x0000), role, &handle, 10000) < 0){
+        if (hci_create_connection(socket, &bdaddr, htobs(ptype),htobs(0x0000), role, &handle, 10000) < 0){
             perror("Can't create connection");
             goto clean;
         }
@@ -340,12 +341,12 @@ int wiimote_rssi(int dev_id, bdaddr_t bdaddr){
 
     bacpy(&cr->bdaddr, &bdaddr);
     cr->type = ACL_LINK;
-    if (ioctl(dd, HCIGETCONNINFO, (unsigned long) cr) < 0) {
+    if (ioctl(socket, HCIGETCONNINFO, (unsigned long) cr) < 0) {
         perror("Get connection info failed");
         goto crclean;
     }
 
-    if (hci_read_rssi(dd, htobs(cr->conn_info->handle), &rssi, 1000) < 0) {
+    if (hci_read_rssi(socket, htobs(cr->conn_info->handle), &rssi, 1000) < 0) {
         perror("Read RSSI failed");
         goto crclean;
     }
@@ -355,7 +356,7 @@ int wiimote_rssi(int dev_id, bdaddr_t bdaddr){
     free(cr);
 
     clean:
-    hci_close_dev(dd);
+    hci_close_dev(socket);
 
     return rssi;
 }
@@ -365,8 +366,8 @@ int wiimote_scan(char *wiimotes[18]) {
 
     int dev_id = hci_get_route(NULL);
 
-    int sock = hci_open_dev( dev_id );
-    if (dev_id < 0 || sock < 0) {
+    int socket = hci_open_dev( dev_id );
+    if (dev_id < 0 || socket < 0) {
         perror("Failed to open socket.");
         exit(255);
     }
@@ -539,7 +540,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         printf("Please press 1+2 on your wiimote..\n");
 
         while (wiimote_address == NULL) {
-            num_wiimotes = wiimote_scan(&wiimotes);
+            num_wiimotes = wiimote_scan(wiimotes);
 
             if (num_wiimotes <= 0) continue;
 
