@@ -1,7 +1,5 @@
 #!/bin/bash
 
-exec >>/var/log/wiipresent.log 2>&1
-
 (
     killall wiipresent.sh wiipresent
 
@@ -10,4 +8,4 @@ exec >>/var/log/wiipresent.log 2>&1
         wiipresent -l 45 -r -t -v -v
         echo "=============="
     done
-) &
+) >>/var/log/wiipresent.log 2>&1 &

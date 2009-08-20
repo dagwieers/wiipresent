@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=WiiPresent
+Terminal=true
+Icon=wiipresent
+Type=Application
+Categories=Application;Office;X-Red-Hat-Base;
+Exec=wiipresent -l 45 -r -t
+Comment=Written by Dag Wieers and Geerd-Dietger Hoffmann
+StartupNotify=true
+GenericName=Give presentations and control applications using your Nintendo WiiMote
+X-MB-SingleInstance=true 

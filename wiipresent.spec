@@ -4,9 +4,9 @@
 
 %{?dist: %{expand: %%define %dist 1}}
 
-Summary: Giving presentations with your Wiimote (or control applications with the Wiimote)
+Summary: Giving presentations (or control applications) with your Wiimote
 Name: wiipresent
-Version: 0.7.5
+Version: 0.7.5.1
 Release: 1
 License: GPL
 Group: Applications/Productivity
@@ -32,6 +32,12 @@ be used to control your mouse-pointer and control various applications.
 %{__rm} -rf %{buildroot}
 %{__make} install DESTDIR="%{buildroot}"
 
+%post
+/usr/bin/update-desktop-database -q || :
+
+%postun
+/usr/bin/update-desktop-database -q || :
+
 %clean
 %{__rm} -rf %{buildroot}
 
@@ -39,10 +45,15 @@ be used to control your mouse-pointer and control various applications.
 %defattr(-, root, root, 0755)
 %doc AUTHORS ChangeLog COPYING INSTALL README TODO docs/*.html docs/*.txt
 %doc %{_mandir}/man1/wiipresent.1*
-%config %{_sysconfdir}/X11/xinit/xinitrc.d/wiipresent.sh
+#config %{_sysconfdir}/X11/xinit/xinitrc.d/wiipresent.sh
 %{_bindir}/wiipresent
+%{_datadir}/applications/wiipresent.desktop
+%{_datadir}/pixmaps/wiipresent.svg
 
 %changelog
+* Thu Aug 20 2009 Dag Wieers <dag@wieers.com> - 0.7.5.1-1
+- Updated to release 0.7.5.1-1
+
 * Thu Aug 20 2009 Dag Wieers <dag@wieers.com> - 0.7.5-1
 - Updated to release 0.7.5.
 

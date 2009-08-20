@@ -45,7 +45,7 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 Status XQueryCommand(Display *display, Window window, char **name);
 
 static char NAME[] = "wiipresent";
-static char VERSION[] = "0.7.5";
+static char VERSION[] = "0.7.5.1";
 
 static char *displayname = NULL;
 static Display *display = NULL;
@@ -275,6 +275,7 @@ void rumble(wiimote_t *wmote, int msecs) {
     wmote->rumble = 0;
 }
 
+/*
 int find_conn(int s, int dev_id, long arg) {
     struct hci_conn_list_req *cl;
     struct hci_conn_info *ci;
@@ -360,6 +361,7 @@ int wiimote_rssi(int dev_id, bdaddr_t bdaddr){
 
     return rssi;
 }
+*/
 
 int wiimote_scan(char *wiimotes[18]) {
     char addr[18] = { 0 };
@@ -568,9 +570,9 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         signal(SIGQUIT, exit_clean);
 
         if (tilt)
-            fprintf(stderr, "Mouse movement controlled by tilting wiimote.\n");
+            fprintf(stderr, "Mouse movement controlled by tilting wiimote (press A+B).\n");
         else if (infrared)
-            fprintf(stderr, "Mouse movement controlled by infrared using sensor bar. (EXPERIMENTAL)\n");
+            fprintf(stderr, "Mouse movement controlled by infrared using sensor bar. (press A+B) NOT IMPLEMENTED\n");
         else
             fprintf(stderr, "Mouse movement disabled.\n");
 

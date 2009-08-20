@@ -1,6 +1,10 @@
+* 0.7.5.1 - release 20/08/2009
+- Disable the installation of xinit script
+- Small documentation improvements
+- Added .desktop file and .svg icon
+
 * 0.7.5 - release 20/08/2009
 - Added support for kpdf
-- Added example xinit script
 - Allow for more than one bluetooth address
 - Scan for Nintendo RVL-CNT-01 devices (Geerd-Dietger Hoffman)
 - Added xinit script

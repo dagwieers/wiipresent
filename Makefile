@@ -23,7 +23,9 @@ wiipresent: wiipresent.c
 install:
 	install -Dp -m0755 wiipresent $(DESTDIR)$(bindir)/wiipresent
 	install -Dp -m0644 docs/wiipresent.1 $(DESTDIR)$(mandir)/man1/wiipresent.1
-	install -Dp -m0755 wiipresent-xinit.sh $(DESTDIR)$(sysconfdir)/X11/xinit/xinitrc.d/wiipresent.sh
+#	install -Dp -m0755 wiipresent-xinit.sh $(DESTDIR)$(sysconfdir)/X11/xinit/xinitrc.d/wiipresent.sh
+	install -Dp -m0644 wiipresent.desktop $(DESTDIR)$(datadir)/applications/wiipresent.desktop
+	install -Dp -m0644 wiipresent.svg $(DESTDIR)$(datadir)/pixmaps/wiipresent.svg
 
 docs:
 	$(MAKE) -C docs docs
