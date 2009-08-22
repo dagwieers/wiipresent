@@ -45,7 +45,7 @@ Copyright 2009 Dag Wieers <dag@wieers.com>
 Status XQueryCommand(Display *display, Window window, char **name);
 
 static char NAME[] = "wiipresent";
-static char VERSION[] = "0.7.5.1";
+static char VERSION[] = "0.7.5.2";
 
 static char *displayname = NULL;
 static Display *display = NULL;
@@ -539,7 +539,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         num_wiimotes = 0;
         wiimote_address = NULL;
 
-        printf("Please press 1+2 on your wiimote..\n");
+        printf("Please press 1+2 together on your wiimote..\n");
 
         while (wiimote_address == NULL) {
             num_wiimotes = wiimote_scan(wiimotes);
@@ -568,6 +568,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         signal(SIGINT, exit_clean);
         signal(SIGHUP, exit_clean);
         signal(SIGQUIT, exit_clean);
+
+        rumble(&wmote, 200);
 
         if (tilt)
             fprintf(stderr, "Mouse movement controlled by tilting wiimote (press A+B).\n");
@@ -604,8 +606,6 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         XGetInputFocus(display, &window, &revert);
         XQueryCommand(display, window, &name);
         oldwindow = window;
-
-        rumble(&wmote, 200);
 
         start = time(NULL);
 
@@ -655,8 +655,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                     // Shift the leds
                     wmote.led.bits = pow(2, phase) - 1;
 
-                    // Rumble slightly longer at the end (exponentially)
-                    rumble(&wmote, 100 * exp(phase + 1) / 10);
+//                    rumble(&wmote, pow(2, phase) * 1000 / 4);
+//                    printf("Phase %d rumbles %f.\n", phase, pow(2, phase) / 2);
 
                     switch (phase)  {
                         case 0:
@@ -665,6 +665,23 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                         case 4:
                             printf("Hurry up ! Maybe questions ?\n");
                             break;
+                    }
+
+                    // Rumble slightly longer at the end (exponentially)
+                    // FIXME: Dirty hack, look into something better.
+                    int i = 0;
+                    if (phase != 0) {
+                        for (i = 0; i < phase; i++) {
+                            rumble(&wmote, 100);
+                            wiimote_update(&wmote);
+                            usleep(100 * 1000);
+                         }
+                    } else {
+                        for (i = 0; i < 10; i++) {
+                            rumble(&wmote, 100);
+                            wiimote_update(&wmote);
+                            usleep(100 * 1000);
+                        }
                     }
                     oldphase = phase;
                 }
