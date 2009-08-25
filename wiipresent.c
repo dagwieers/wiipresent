@@ -254,6 +254,15 @@ Status XQueryCommand(Display *display, Window window, char **name) {
     return 1;
 }
 
+char *timefmt(length) {
+    char *out = malloc(15);
+    if (length / 60 >= 1)
+        snprintf(out, 9, " %d min", length / 60);
+    if (length % 60 >= 1)
+        snprintf(out, 8, " %d sec", length % 60);
+    return out;
+}
+
 void exit_clean(int sig) {
     wiimote_disconnect(&wmote);
     XSetScreenSaver(display, timeout_return, interval_return, prefer_blanking_return, allow_exposures_return);
@@ -562,7 +571,6 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
             }
         }
 
-        fprintf(stderr, "Found %d wiimotes, choosing wiimote %s !\n", num_wiimotes, wiimote_address);
         wiimote_connect(&wmote, wiimote_address);
 
         signal(SIGINT, exit_clean);
@@ -570,6 +578,7 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         signal(SIGQUIT, exit_clean);
 
         rumble(&wmote, 200);
+        fprintf(stderr, "Found %d wiimotes, choosing wiimote %s !\n", num_wiimotes, wiimote_address);
 
         if (tilt)
             fprintf(stderr, "Mouse movement controlled by tilting wiimote (press A+B).\n");
@@ -578,7 +587,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
         else
             fprintf(stderr, "Mouse movement disabled.\n");
 
-        if (length) fprintf(stderr, "Presentation length is %dmin divided in 5 slots of %dmin.\n", length/60, length/60/5);
+        if (length)
+            fprintf(stderr, "Presentation length is%s divided in 5 slots of%s.\n", timefmt(length), timefmt(length/5));
 
         // Disable screensaver
         XGetScreenSaver(display, &timeout_return, &interval_return, &prefer_blanking_return, &allow_exposures_return);

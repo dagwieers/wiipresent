@@ -9,6 +9,7 @@ shortcomings for both wiipresent as well as libwiimote.
   (should probably go into libwiimote, not wiipresent)
 - Put keycode configuration in separate config-files that are activated
   when mouseover application
+- Disable screen blanking (xset dpms/xset -q) and restoring after use
 
 == Ideas
 - Allow to set a timeout time (to not drain battery when used as a remote)
