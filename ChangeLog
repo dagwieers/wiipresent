@@ -1,5 +1,6 @@
-* 0.7.5.2svn - release 26/08/2009
+* 0.7.5.2svn - release 06/09/2009
 - Provide minutes and seconds for presentation length and time slots
+- Add support for kaffeine
 
 * 0.7.5.2 - release 22/08/2009
 - Rumble wiimote X times depending on phase
