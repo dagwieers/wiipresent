@@ -1017,6 +1017,8 @@ Written by Dag Wieers <dag@wieers.com>.\n", NAME, VERSION);
                 if (wmote.keys.two) {
                     if (strcasestr(name, "gxine") == name) {
                         XKeysym(XK_a, 0);
+                    } else if (strcasestr(name, "kaffeine") == name) {
+                        XKeysym(XK_M, 0);
                     } else if (strcasestr(name, "nautilus") == name) {
                         if ( (fileviewtoggle = ! fileviewtoggle) )
                             XKeysym(XK_1, ControlMask | ShiftMask);
